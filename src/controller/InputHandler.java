@@ -1,0 +1,84 @@
+package controller;
+
+import controller.events.EventBus;
+import controller.events.UnitActionsChangedEvent;
+import model.HexUtils;
+import model.Tile;
+import model.Unit;
+
+import javax.swing.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+public class InputHandler extends MouseAdapter {
+    private final GameController gc;
+
+    public InputHandler(GameController gc) {
+        this.gc = gc;
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        handleMouseClick(e);
+    }
+
+    private Unit getUnitAt(int col, int row) {
+        for (Unit u : gc.getUnits()) {
+            if (u.isAssigned()) continue;
+            if (u.getCol() == col && u.getRow() == row) return u;
+        }
+        return null;
+    }
+
+    private Tile getTileAtPixel(int pixelX, int pixelY) {
+        int worldX = pixelX + gc.getXOffset();
+        int worldY = pixelY + gc.getYOffset();
+        int a = gc.getA();
+
+        Tile closestTile = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Tile tile : gc.getTiles()) {
+            double x = HexUtils.centerX(tile.getCol()) * a;
+            double y = HexUtils.centerY(tile.getCol(), tile.getRow()) * a;
+
+            double distance = Math.pow(worldX - x, 2) + Math.pow(worldY - y, 2);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestTile = tile;
+            }
+        }
+
+        if (minDistance <= a * a * 1.5) return closestTile;
+        return null;
+    }
+
+    private void handleMouseClick(MouseEvent e) {
+        Tile clickedTile = getTileAtPixel(e.getX(), e.getY());
+        if (clickedTile == null) return;
+
+        if (SwingUtilities.isLeftMouseButton(e)) {
+            Unit unitOnTile = getUnitAt(clickedTile.getCol(), clickedTile.getRow());
+            if (unitOnTile != null) {
+                gc.setSelectedUnit(unitOnTile);
+                gc.setTileUnderUnit(clickedTile);
+            } else {
+                gc.setSelectedUnit(null);
+                gc.setTileUnderUnit(clickedTile);
+            }
+            EventBus.publish(new UnitActionsChangedEvent());
+        } else if (SwingUtilities.isRightMouseButton(e)) {
+            Unit selectedUnit = gc.getSelectedUnit();
+            if (selectedUnit != null) {
+                if (HexUtils.isNeighbor(selectedUnit.getCol(), selectedUnit.getRow(), clickedTile.getCol(), clickedTile.getRow())) {
+                    if(selectedUnit.move(clickedTile.getCol(), clickedTile.getRow(),
+                            clickedTile.getTerrain().getMovementCost())){
+                        gc.setTileUnderUnit(clickedTile);
+                        gc.updateFog();
+                        EventBus.publish(new UnitActionsChangedEvent());
+                    }
+                }
+            }
+        }
+    }
+}
