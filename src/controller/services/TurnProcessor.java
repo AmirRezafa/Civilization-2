@@ -53,13 +53,21 @@ public class TurnProcessor {
         if(isStarvation) EventBus.publish(new StarvationEvent());
 
         Tile townhall = gc.getTownhall();
-        if(townhall.getBuilding().isProducing()){
-            townhall.getBuilding().decrementProductionTurns();
-            if (townhall.getBuilding().getProductionTurnsLeft() <= 0) {
-                Unit newUnit = new Unit(townhall.getBuilding().getProducingUnit(), townhall.getCol(), townhall.getRow());
-                gc.addUnit(newUnit);
+        Building townHallBuilding = townhall.getBuilding();
+        if(townHallBuilding.isProducing()){
+            townHallBuilding.decrementProductionTurns();
+            if (townHallBuilding.getProductionTurnsLeft() <= 0) {
+                if (townHallBuilding.getProducingUnit() != null) {
+                    Unit newUnit = new Unit(townHallBuilding.getProducingUnit(), townhall.getCol(), townhall.getRow());
+                    gc.addUnit(newUnit);
+                } else if (townHallBuilding.getUpgradingToLevel() != null) {
+                    townHallBuilding.applyLevelUpgrade();
+                    gc.applyTownHallStorage(townHallBuilding.getTownHallLevel());
+                } else if (townHallBuilding.getResearchingTech() != null) {
+                    gc.completeTechResearch(townHallBuilding.getResearchingTech());
+                }
 
-                townhall.getBuilding().clearProduction();
+                townHallBuilding.clearProduction();
             }
         }
     }

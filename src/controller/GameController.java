@@ -46,10 +46,7 @@ public class GameController {
     private int unitCapacity = 9;
     private Map<UnitType, Integer> unitCount = new HashMap<>();
 
-    private boolean stoneTech = false;
-    private boolean ironTech = false;
-    private boolean settlementTech = false;
-    private boolean proToolsTech = false;
+    private Map<TechType, Boolean> researchedTechs = new HashMap<>();
 
     public GameController(Ground ground) {
         this.ground = ground;
@@ -77,6 +74,7 @@ public class GameController {
 
         animationController = new AnimationController(this);
         economy = new GlobalResourceManager();
+        applyTownHallStorage(Townhall.getBuilding().getTownHallLevel());
         turnProcessor = new TurnProcessor(this);
 
         Timer timer = new Timer(
@@ -261,63 +259,92 @@ public class GameController {
         selectedUnit = null;
     }
 
-    public int getStorageLevel() {
-        if(economy.getResourceCapacityAmount(ResourceType.WOOD) == 100) return 0;
-        else if(economy.getResourceCapacityAmount(ResourceType.WOOD) == 250) return 1;
-        else return 2;
+    public TownHallLevel getTownHallLevel() {
+        return Townhall.getBuilding().getTownHallLevel();
     }
 
-    public void upgradeStorage() {
-        if(getStorageLevel() == 0){
-            economy.spendResource(ResourceType.WOOD, 100);
-            economy.updateStorage(150, 150, 250, 200, 180);
-        }else if(getStorageLevel() == 1){
-            economy.spendResource(ResourceType.WOOD, 200);
-            economy.spendResource(ResourceType.STONE, 100);
-            economy.updateStorage(400, 400, 600, 500, 400);
-        }
+    public void applyTownHallStorage(TownHallLevel level) {
+        economy.updateStorage(level.getCattleCapacity(), level.getWheatCapacity(), level.getWoodCapacity(),
+                level.getStoneCapacity(), level.getIronCapacity());
+    }
+
+    public boolean upgradeTownHall() {
+        Building townHallBuilding = Townhall.getBuilding();
+        if (townHallBuilding.isProducing()) return false;
+
+        TownHallLevel nextLevel = townHallBuilding.getTownHallLevel().getNextLevel();
+        if (nextLevel == null) return false;
+
+        if(!(economy.hasEnough(ResourceType.WOOD, nextLevel.getUpgradeWoodCost()) &&
+            economy.hasEnough(ResourceType.STONE, nextLevel.getUpgradeStoneCost()) &&
+            economy.hasEnough(ResourceType.IRON, nextLevel.getUpgradeIronCost())))
+            return false;
+
+        economy.spendResource(ResourceType.WOOD, nextLevel.getUpgradeWoodCost());
+        economy.spendResource(ResourceType.STONE, nextLevel.getUpgradeStoneCost());
+        economy.spendResource(ResourceType.IRON, nextLevel.getUpgradeIronCost());
+
+        townHallBuilding.startUpgrading(nextLevel);
         EventBus.publish(new HUDChangedEvent());
+        return true;
     }
 
     // "is" ha ro "has" kardam ke tamiz tar beshe yeho nagid ai e :((
 
     public boolean hasStoneTech() {
-        return stoneTech;
+        return hasTech(TechType.STONE_MINING);
     }
 
     public boolean hasIronTech() {
-        return ironTech;
+        return hasTech(TechType.IRON_MINING);
     }
 
     public boolean hasSettlementTech() {
-        return settlementTech;
+        return hasTech(TechType.SETTLEMENT_TECH);
     }
 
     public boolean hasProToolsTech() {
-        return proToolsTech;
+        return hasTech(TechType.PRO_TOOLS);
     }
 
-    public void researchStoneTech() {
-        economy.spendResource(ResourceType.WOOD, 50);
-        stoneTech = true;
+    public boolean hasTech(TechType tech) {
+        return researchedTechs.getOrDefault(tech, false);
+    }
+
+    public boolean hasEnoughResource(ResourceType type, int amount) {
+        return economy.hasEnough(type, amount);
+    }
+
+    public boolean researchTech(TechType tech) {
+        if (hasTech(tech)) return false;
+        if (getTownHallLevel().getLevelNumber() < tech.getRequiredLevel().getLevelNumber()) return false;
+        if (!economy.hasEnough(tech.getCostResource(), tech.getCostAmount())) return false;
+
+        if (tech.isInstant()) {
+            if (tech.getCostAmount() > 0) economy.spendResource(tech.getCostResource(), tech.getCostAmount());
+            completeTechResearch(tech);
+            return true;
+        }
+
+        Building townHallBuilding = Townhall.getBuilding();
+        if (townHallBuilding.isProducing()) return false;
+
+        if (tech.getCostAmount() > 0) economy.spendResource(tech.getCostResource(), tech.getCostAmount());
+        townHallBuilding.startResearching(tech);
         EventBus.publish(new HUDChangedEvent());
+        return true;
     }
 
-    public void researchIronTech() {
-        economy.spendResource(ResourceType.STONE, 100);
-        stoneTech = true;
-        EventBus.publish(new HUDChangedEvent());
-    }
+    public void completeTechResearch(TechType tech) {
+        researchedTechs.put(tech, true);
 
-    public void researchSettlementTech() {
-        economy.spendResource(ResourceType.WOOD, 150);
-        stoneTech = true;
-        EventBus.publish(new HUDChangedEvent());
-    }
+        if (tech == TechType.DEFENSIVE_ARCHITECTURE) {
+            Building townHallBuilding = Townhall.getBuilding();
+            int hpGain = 350 - townHallBuilding.getMaxHP();
+            townHallBuilding.setMaxHP(350);
+            if (hpGain > 0) townHallBuilding.heal(hpGain);
+        }
 
-    public void researchProToolsTech() {
-        economy.spendResource(ResourceType.IRON, 100);
-        proToolsTech = true;
         EventBus.publish(new HUDChangedEvent());
     }
 
@@ -339,7 +366,7 @@ public class GameController {
 
             ResourceType source = building.getType().getOutputResource();
             if(source != null && source != ResourceType.NONE){
-                economy.addNetChanges(source, (int)((proToolsTech ? 1.5 : 1) *
+                economy.addNetChanges(source, (int)((hasProToolsTech() ? 1.5 : 1) *
                         BASE_PRODUCTION_RATE) * building.getStationedWorkers().size());
             }
         }

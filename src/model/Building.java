@@ -10,9 +10,15 @@ public class Building {
     private ArrayList<Unit> workers;
 
     private UnitType producingUnit = null;
+    private TownHallLevel upgradingToLevel = null;
+    private TechType researchingTech = null;
     private int productionTurnsLeft = 0;
 
     private int failedCount = 0;
+
+    private TownHallLevel townHallLevel;
+    private int hp;
+    private int maxHP;
 
 
     public Building(BuildingType type, int col, int row) {
@@ -22,6 +28,12 @@ public class Building {
         this.type = type;
         this.isOccupied = false;
         workers = new ArrayList<>();
+
+        if (type == BuildingType.TOWN_HALL) {
+            this.townHallLevel = TownHallLevel.LEVEL_1;
+            this.maxHP = townHallLevel.getMaxHP();
+            this.hp = maxHP;
+        }
     }
 
     public int getCol() {
@@ -67,12 +79,30 @@ public class Building {
         this.productionTurnsLeft = type.getBuildTurns();
     }
 
+    public void startUpgrading(TownHallLevel targetLevel) {
+        this.upgradingToLevel = targetLevel;
+        this.productionTurnsLeft = targetLevel.getUpgradeTurns();
+    }
+
+    public void startResearching(TechType tech) {
+        this.researchingTech = tech;
+        this.productionTurnsLeft = tech.getResearchTurns();
+    }
+
     public boolean isProducing() {
-        return (producingUnit != null);
+        return (producingUnit != null || upgradingToLevel != null || researchingTech != null);
     }
 
     public UnitType getProducingUnit() {
         return producingUnit;
+    }
+
+    public TownHallLevel getUpgradingToLevel() {
+        return upgradingToLevel;
+    }
+
+    public TechType getResearchingTech() {
+        return researchingTech;
     }
 
     public int getProductionTurnsLeft() {
@@ -85,6 +115,8 @@ public class Building {
 
     public void clearProduction() {
         producingUnit = null;
+        upgradingToLevel = null;
+        researchingTech = null;
         productionTurnsLeft = 0;
     }
 
@@ -94,5 +126,30 @@ public class Building {
 
     public int getFailedCount() {
         return failedCount;
+    }
+
+    public TownHallLevel getTownHallLevel() {
+        return townHallLevel;
+    }
+
+    public void applyLevelUpgrade() {
+        this.townHallLevel = upgradingToLevel;
+        heal(townHallLevel.getHealOnUpgrade());
+    }
+
+    public int getHP() {
+        return hp;
+    }
+
+    public int getMaxHP() {
+        return maxHP;
+    }
+
+    public void setMaxHP(int maxHP) {
+        this.maxHP = maxHP;
+    }
+
+    public void heal(int amount) {
+        hp = Math.min(maxHP, hp + amount);
     }
 }

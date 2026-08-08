@@ -13,7 +13,7 @@ public class GlobalResourceManager {
         this.resourcesCapacity = new HashMap<>();
         this.resourceNetChanges = new HashMap<>();
 
-        updateStorage(50, 50, 100, 90, 80);
+        updateStorage(100, 100, 100, 100, 100);
 
         initRegistry();
     }

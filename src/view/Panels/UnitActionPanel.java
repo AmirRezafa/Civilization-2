@@ -51,8 +51,17 @@ public class UnitActionPanel extends JPanel {
     }
 
     public void showProducingMSG(Building building){
-        String msg = "Producing: " + building.getProducingUnit().getDisplayName() +
-                " (" + building.getProductionTurnsLeft() + " Turns Left)";
+        String msg;
+        if (building.getProducingUnit() != null) {
+            msg = "Producing: " + building.getProducingUnit().getDisplayName() +
+                    " (" + building.getProductionTurnsLeft() + " Turns Left)";
+        } else if (building.getUpgradingToLevel() != null) {
+            msg = "Upgrading to: " + building.getUpgradingToLevel().getDisplayName() +
+                    " (" + building.getProductionTurnsLeft() + " Turns Left)";
+        } else {
+            msg = "Researching: " + building.getResearchingTech().getDisplayName() +
+                    " (" + building.getProductionTurnsLeft() + " Turns Left)";
+        }
         JLabel producingLabel = new JLabel(msg);
         producingLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
         producingLabel.setForeground(new Color(241, 196, 15));
@@ -154,99 +163,59 @@ public class UnitActionPanel extends JPanel {
         buttonContainer.add(expandBtn);
     }
 
-    private void showStorageUpgradeButtons() {
-        int storageLevel = GC.getStorageLevel();
-        JButton storageBtn = new JButton();
-        storageBtn.setFocusable(false);
-        storageBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+    private void showTownHallUpgradeButton() {
+        TownHallLevel currentLevel = GC.getTownHallLevel();
+        TownHallLevel nextLevel = currentLevel.getNextLevel();
 
-        if (storageLevel == 0) {
-            storageBtn.setText("Upgrade Storage Lvl 1 (100 Wood)");
-            storageBtn.setEnabled(GC.hasEnoughWood(100));
-            storageBtn.addActionListener(e -> {
-                GC.upgradeStorage();
-                updateActions();
-            });
-            buttonContainer.add(storageBtn);
-        } else if (storageLevel == 1) {
-            storageBtn.setText("Upgrade Storage Lvl 2 (200 Wood, 100 Stone)");
-            storageBtn.setEnabled(GC.hasEnoughWood(200) && GC.hasEnoughStone(100));
-            storageBtn.addActionListener(e -> {
-                GC.upgradeStorage();
-                updateActions();
-            });
-            buttonContainer.add(storageBtn);
-        } else {
-            storageBtn.setText("Storage Maxed Out (Lvl 2)");
-            storageBtn.setEnabled(false);
-            buttonContainer.add(storageBtn);
+        JButton upgradeBtn = new JButton();
+        upgradeBtn.setFocusable(false);
+        upgradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+
+        if (nextLevel == null) {
+            upgradeBtn.setText("Town Hall Maxed Out (" + currentLevel.getDisplayName() + ")");
+            upgradeBtn.setEnabled(false);
+            buttonContainer.add(upgradeBtn);
+            return;
         }
+
+        upgradeBtn.setText("Upgrade to " + nextLevel.getDisplayName()
+                + " (" + nextLevel.getUpgradeWoodCost() + " Wood, "
+                + nextLevel.getUpgradeStoneCost() + " Stone, "
+                + nextLevel.getUpgradeIronCost() + " Iron)");
+        upgradeBtn.setEnabled(GC.hasEnoughWood(nextLevel.getUpgradeWoodCost()) &&
+                GC.hasEnoughStone(nextLevel.getUpgradeStoneCost()) &&
+                GC.hasEnoughIron(nextLevel.getUpgradeIronCost()));
+
+        upgradeBtn.addActionListener(e -> {
+            GC.upgradeTownHall();
+            updateActions();
+        });
+
+        buttonContainer.add(upgradeBtn);
     }
 
     private void showResearchButtons() {
-        JButton stoneTechBtn = new JButton("Stone Mining Tech (50 Wood)");
-        stoneTechBtn.setFocusable(false);
-        stoneTechBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        for (TechType tech : TechType.values()) {
+            JButton techBtn = new JButton(tech.getDisplayName() + " (" + tech.getCostString() + ")");
+            techBtn.setFocusable(false);
+            techBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
 
-        if (GC.hasStoneTech()) {
-            stoneTechBtn.setText("Stone Mining ✅");
-            stoneTechBtn.setEnabled(false);
-        } else {
-            stoneTechBtn.setEnabled(GC.hasEnoughWood(50));
-            stoneTechBtn.addActionListener(e -> {
-                GC.researchStoneTech();
-                updateActions();
-            });
+            if (GC.hasTech(tech)) {
+                techBtn.setText(tech.getDisplayName() + " ✅");
+                techBtn.setEnabled(false);
+            } else {
+                boolean levelMet = GC.getTownHallLevel().getLevelNumber() >= tech.getRequiredLevel().getLevelNumber();
+                boolean canAfford = GC.hasEnoughResource(tech.getCostResource(), tech.getCostAmount());
+                techBtn.setEnabled(levelMet && canAfford);
+
+                techBtn.addActionListener(e -> {
+                    GC.researchTech(tech);
+                    updateActions();
+                });
+            }
+
+            buttonContainer.add(techBtn);
         }
-        buttonContainer.add(stoneTechBtn);
-
-        JButton ironTechBtn = new JButton("Iron Mining Tech (100 Stone)");
-        ironTechBtn.setFocusable(false);
-        ironTechBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-
-        if (GC.hasIronTech()) {
-            ironTechBtn.setText("Iron Mining ✅");
-            ironTechBtn.setEnabled(false);
-        } else {
-            ironTechBtn.setEnabled(GC.hasEnoughStone(100));
-            ironTechBtn.addActionListener(e -> {
-                GC.researchIronTech();
-                updateActions();
-            });
-        }
-        buttonContainer.add(ironTechBtn);
-
-        JButton settlementTechBtn = new JButton("Settlement Tech (150 Wood)");
-        settlementTechBtn.setFocusable(false);
-        settlementTechBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-
-        if (GC.hasSettlementTech()) {
-            settlementTechBtn.setText("Settlement ✅");
-            settlementTechBtn.setEnabled(false);
-        } else {
-            settlementTechBtn.setEnabled(GC.hasEnoughWood(150));
-            settlementTechBtn.addActionListener(e -> {
-                GC.researchSettlementTech();
-                updateActions();
-            });
-        }
-        buttonContainer.add(settlementTechBtn);
-
-        JButton toolsTechBtn = new JButton("Pro Tools Tech (100 Iron)");
-        toolsTechBtn.setFocusable(false);
-        toolsTechBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-
-        if (GC.hasProToolsTech()) {
-            toolsTechBtn.setText("Pro Tools (1.5x) ✅");
-            toolsTechBtn.setEnabled(false);
-        } else {
-            toolsTechBtn.setEnabled(GC.hasEnoughIron(100));
-            toolsTechBtn.addActionListener(e -> {
-                GC.researchProToolsTech();
-                updateActions();
-            });
-        }
-        buttonContainer.add(toolsTechBtn);
     }
 
     private void showTownHallMainMenu() {
@@ -258,7 +227,7 @@ public class UnitActionPanel extends JPanel {
             updateActions();
         });
 
-        JButton storageMenuBtn = new JButton("Storage Upgrades");
+        JButton storageMenuBtn = new JButton("Upgrade Town Hall");
         storageMenuBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
         storageMenuBtn.setFocusable(false);
         storageMenuBtn.addActionListener(e -> {
@@ -320,7 +289,7 @@ public class UnitActionPanel extends JPanel {
                             showBackButton();
                             switch (currentSubMenu) {
                                 case TRAIN -> showProduceButtons();
-                                case STORAGE -> showStorageUpgradeButtons();
+                                case STORAGE -> showTownHallUpgradeButton();
                                 case TECH -> showResearchButtons();
                             }
                         }
