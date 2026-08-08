@@ -30,11 +30,14 @@ public class WorldGenerator {
 
     public WorldData generate(int rows, int cols, int townhallX, int townhallY) {
         Random random = new Random();
-        TerrainType[] types = {TerrainType.PLAIN, TerrainType.FOREST, TerrainType.MOUNTAIN, TerrainType.MEADOW};
+        TerrainType[] coreTypes = {TerrainType.PLAIN, TerrainType.FOREST, TerrainType.MOUNTAIN, TerrainType.MEADOW};
+        TerrainType[] specialTypes = {TerrainType.SEA, TerrainType.MOUNTAIN_RANGE};
 
-        int seedsCount = 150;
-        int[][] seeds = new int[seedsCount + types.length + 1][2];
-        TerrainType[] seedTypes = new TerrainType[seedsCount + types.length + 1];
+        int coreSeedsCount = 120;
+        int specialSeedsCount = 30;
+        int seedsCount = coreSeedsCount + specialSeedsCount;
+        int[][] seeds = new int[seedsCount + coreTypes.length + 1][2];
+        TerrainType[] seedTypes = new TerrainType[seedsCount + coreTypes.length + 1];
 
         for (int i = 0; i < seedsCount; i++) {
             int c = random.nextInt(cols);
@@ -45,7 +48,11 @@ public class WorldGenerator {
             }
             seeds[i][0] = c;
             seeds[i][1] = r;
-            seedTypes[i] = types[random.nextInt(types.length)];
+            if (i < coreSeedsCount) {
+                seedTypes[i] = coreTypes[random.nextInt(coreTypes.length)];
+            } else {
+                seedTypes[i] = specialTypes[random.nextInt(specialTypes.length)];
+            }
         }
 
         ArrayList<int[]> positions = new ArrayList<>(List.of(
@@ -58,9 +65,9 @@ public class WorldGenerator {
 
         Collections.shuffle(positions, random);
 
-        for(int i = 0; i < types.length + 1; i++){
+        for(int i = 0; i < coreTypes.length + 1; i++){
             seeds[i + seedsCount] = positions.get(i);
-            seedTypes[i + seedsCount] = types[((i + 1) % types.length)];
+            seedTypes[i + seedsCount] = coreTypes[((i + 1) % coreTypes.length)];
         }
 
         ArrayList<Tile> tempTiles = new ArrayList<>();
@@ -70,9 +77,9 @@ public class WorldGenerator {
         for (int col = 0; col < cols; col++) {
             for (int row = 0; row < rows; row++) {
                 double minD = Double.MAX_VALUE;
-                TerrainType finalType = types[0];
+                TerrainType finalType = coreTypes[0];
 
-                for (int i = 0; i < seedsCount + types.length + 1; i++) {
+                for (int i = 0; i < seedsCount + coreTypes.length + 1; i++) {
                     double dist = Math.pow(seeds[i][0] - col, 2) + Math.pow(seeds[i][1] - row, 2);
                     dist += random.nextDouble() * 8.0;
 
