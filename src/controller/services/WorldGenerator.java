@@ -30,7 +30,7 @@ public class WorldGenerator {
 
     public WorldData generate(int rows, int cols, int townhallX, int townhallY) {
         Random random = new Random();
-        TerrainType[] types = TerrainType.values();
+        TerrainType[] types = {TerrainType.PLAIN, TerrainType.FOREST, TerrainType.MOUNTAIN, TerrainType.MEADOW};
 
         int seedsCount = 150;
         int[][] seeds = new int[seedsCount + types.length + 1][2];

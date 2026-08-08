@@ -96,6 +96,8 @@ public class Ground extends JPanel{
             case FOREST -> new Color(34, 139, 34);
             case MOUNTAIN -> new Color(128, 128, 128);
             case MEADOW -> new Color(144, 238, 144);
+            case SEA -> new Color(65, 105, 225);
+            case MOUNTAIN_RANGE -> new Color(90, 90, 90);
         };
     }
 
