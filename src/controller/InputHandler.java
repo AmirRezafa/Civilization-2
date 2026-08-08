@@ -2,6 +2,7 @@ package controller;
 
 import controller.events.EventBus;
 import controller.events.UnitActionsChangedEvent;
+import model.EdgeFeature;
 import model.HexUtils;
 import model.Tile;
 import model.Unit;
@@ -71,8 +72,13 @@ public class InputHandler extends MouseAdapter {
             Unit selectedUnit = gc.getSelectedUnit();
             if (selectedUnit != null) {
                 if (HexUtils.isNeighbor(selectedUnit.getCol(), selectedUnit.getRow(), clickedTile.getCol(), clickedTile.getRow())) {
-                    if(selectedUnit.move(clickedTile.getCol(), clickedTile.getRow(),
-                            clickedTile.getTerrain().getMovementCost())){
+                    int movementCost = clickedTile.getTerrain().getMovementCost();
+
+                    EdgeFeature edge = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
+                            clickedTile.getCol(), clickedTile.getRow());
+                    if (edge == EdgeFeature.RIVER) movementCost += 2;
+
+                    if(selectedUnit.move(clickedTile.getCol(), clickedTile.getRow(), movementCost)){
                         gc.setTileUnderUnit(clickedTile);
                         gc.updateFog();
                         EventBus.publish(new UnitActionsChangedEvent());

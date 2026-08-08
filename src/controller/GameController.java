@@ -31,6 +31,7 @@ public class GameController {
     private Tile[][] tileGrid;
     private ArrayList<Unit> units = new ArrayList<>();
     private ArrayList<Building> buildings = new ArrayList<>();
+    private Map<HexEdge, EdgeFeature> edgeFeatures;
 
     private final GlobalResourceManager economy;
 
@@ -61,6 +62,7 @@ public class GameController {
         this.Tiles = worldData.tiles;
         this.tileGrid = worldData.tileGrid;
         this.Townhall = worldData.townhall;
+        this.edgeFeatures = worldData.edgeFeatures;
         this.buildings.add(worldData.townhallBuilding);
         for (Unit unit : worldData.initialUnits) {
             addUnit(unit);
@@ -125,6 +127,10 @@ public class GameController {
 
     public ArrayList<Building> getBuildings() {
         return buildings;
+    }
+
+    public EdgeFeature getEdgeFeature(int col1, int row1, int col2, int row2) {
+        return edgeFeatures.getOrDefault(new HexEdge(col1, row1, col2, row2), EdgeFeature.NONE);
     }
 
     public Tile getTownhall() {

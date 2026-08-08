@@ -17,14 +17,17 @@ public class WorldGenerator {
         public final Tile townhall;
         public final Building townhallBuilding;
         public final List<Unit> initialUnits;
+        public final Map<HexEdge, EdgeFeature> edgeFeatures;
 
         public WorldData(ArrayList<Tile> tiles, Tile[][] tileGrid, Tile townhall,
-                          Building townhallBuilding, List<Unit> initialUnits) {
+                          Building townhallBuilding, List<Unit> initialUnits,
+                          Map<HexEdge, EdgeFeature> edgeFeatures) {
             this.tiles = tiles;
             this.tileGrid = tileGrid;
             this.townhall = townhall;
             this.townhallBuilding = townhallBuilding;
             this.initialUnits = initialUnits;
+            this.edgeFeatures = edgeFeatures;
         }
     }
 
@@ -130,6 +133,34 @@ public class WorldGenerator {
         initialUnits.add(new Unit(UnitType.WORKER, townhallX, townhallY - 1));
         initialUnits.add(new Unit(UnitType.EXPLORER, townhallX + 1, townhallY + 1));
 
-        return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits);
+        Map<HexEdge, EdgeFeature> edgeFeatures = generateRivers(tempTiles, rows, cols, random);
+
+        return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits, edgeFeatures);
+    }
+
+    private Map<HexEdge, EdgeFeature> generateRivers(List<Tile> tiles, int rows, int cols, Random random) {
+        double riverChance = 0.04;
+        Map<HexEdge, EdgeFeature> edgeFeatures = new HashMap<>();
+
+        for (Tile tile : tiles) {
+            int col = tile.getCol();
+            int row = tile.getRow();
+
+            int[][] neighborOffsets = (col % 2 == 0)
+                    ? new int[][]{{col, row - 1}, {col, row + 1}, {col - 1, row}, {col - 1, row + 1}, {col + 1, row}, {col + 1, row + 1}}
+                    : new int[][]{{col, row - 1}, {col, row + 1}, {col - 1, row - 1}, {col - 1, row}, {col + 1, row - 1}, {col + 1, row}};
+
+            for (int[] neighbor : neighborOffsets) {
+                int nCol = neighbor[0];
+                int nRow = neighbor[1];
+                if (nCol < 0 || nCol >= cols || nRow < 0 || nRow >= rows) continue;
+
+                if (random.nextDouble() < riverChance) {
+                    edgeFeatures.put(new HexEdge(col, row, nCol, nRow), EdgeFeature.RIVER);
+                }
+            }
+        }
+
+        return edgeFeatures;
     }
 }
