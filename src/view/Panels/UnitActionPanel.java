@@ -123,8 +123,9 @@ public class UnitActionPanel extends JPanel {
                     && bType.isUnlocked(GC.hasStoneTech(), GC.hasIronTech(), GC.hasSettlementTech());
             boolean isTileEmpty = (currentTile.getBuilding() == null);
             boolean inTerritory = currentTile.isOwned();
+            boolean levelMet = GC.getTownHallLevel().getLevelNumber() >= bType.getRequiredTownHallLevel();
 
-            buildBtn.setEnabled(isValidTerrain && isTileEmpty && inTerritory);
+            buildBtn.setEnabled(isValidTerrain && isTileEmpty && inTerritory && levelMet);
 
             buildBtn.addActionListener(e -> {
                 GC.constructBuilding(bType);
@@ -155,6 +156,43 @@ public class UnitActionPanel extends JPanel {
             updateActions();
         });
         buttonContainer.add(wallBtn);
+    }
+
+    private void showBazaarButtons() {
+        int[] tiers = {10, 100, 500};
+        for (int tier : tiers) {
+            double rate = GC.bazaarRateForTier(tier);
+            JButton tradeBtn = new JButton("Trade " + tier + " Wood -> Stone (" + (int) (rate * 100) + "%)");
+            tradeBtn.setFocusable(false);
+            tradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            tradeBtn.setEnabled(GC.canUseBazaar() && GC.hasEnoughWood(tier));
+            tradeBtn.addActionListener(e -> {
+                GC.tradeAtBazaar(ResourceType.WOOD, ResourceType.STONE, tier);
+                updateActions();
+            });
+            buttonContainer.add(tradeBtn);
+        }
+    }
+
+    private void showTradingPostButtons(Tile currentTile) {
+        if (!currentTile.isOwned()) {
+            JLabel label = new JLabel("Trading Post is outside your territory");
+            label.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            label.setForeground(Color.WHITE);
+            buttonContainer.add(label);
+            return;
+        }
+
+        int amount = 50;
+        JButton tradeBtn = new JButton("Trade " + amount + " Wood -> Stone (80%)");
+        tradeBtn.setFocusable(false);
+        tradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        tradeBtn.setEnabled(GC.canUseTradingPost() && GC.hasEnoughWood(amount));
+        tradeBtn.addActionListener(e -> {
+            GC.tradeAtTradingPost(ResourceType.WOOD, ResourceType.STONE, amount);
+            updateActions();
+        });
+        buttonContainer.add(tradeBtn);
     }
 
     private void showDeconstructButtons(Tile currentTile) {
@@ -324,6 +362,18 @@ public class UnitActionPanel extends JPanel {
             Building building = currentTile.getBuilding();
             if(building == null) return;
             int workerCount = building.getStationedWorkers().size();
+
+            if (building.getType() == BuildingType.BAZAAR) {
+                showBazaarButtons();
+                setVisible(true);
+                return;
+            }
+
+            if (building.getType() == BuildingType.TRADING_POST) {
+                showTradingPostButtons(currentTile);
+                setVisible(true);
+                return;
+            }
 
             if(workerCount == 0 && building.getType() == BuildingType.TOWN_HALL){
                 if (building.isProducing()) {

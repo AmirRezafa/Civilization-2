@@ -36,6 +36,7 @@ public class TurnProcessor {
 
     public void advanceTurn(){
         gc.incrementTurn();
+        gc.resetTradeTurn();
         for(Tile tile: gc.getTiles()){
             Building building = tile.getBuilding();
             if(building != null){

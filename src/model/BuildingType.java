@@ -5,27 +5,27 @@ import java.util.List;
 
 public enum BuildingType {
     LUMBER_MILL("Lumber Mill", TerrainType.FOREST, ResourceType.WOOD,
-            0, 0, 0, 2, 1, 0, true),
+            0, 0, 0, 2, 1, 0, true, 1),
     STONE_MINE("Stone Mine", TerrainType.MOUNTAIN, ResourceType.STONE,
-            15, 0, 0, 3, 2, 0, true) {
+            15, 0, 0, 3, 2, 0, true, 1) {
         @Override
         public boolean isUnlocked(boolean stoneTech, boolean ironTech, boolean settlementTech) {
             return stoneTech;
         }
     },
     IRON_MINE("Iron Mine", TerrainType.MOUNTAIN, ResourceType.IRON,
-            25, 0, 0, 3, 2, 0, true) {
+            25, 0, 0, 3, 2, 0, true, 1) {
         @Override
         public boolean isUnlocked(boolean stoneTech, boolean ironTech, boolean settlementTech) {
             return ironTech;
         }
     },
     FARM("Farm", TerrainType.MEADOW, ResourceType.WHEAT,
-            0, 0, 0, 2, 2, 0, true),
+            0, 0, 0, 2, 2, 0, true, 1),
     STABLE("Stable", TerrainType.PLAIN, ResourceType.CATTLE,
-            20, 0, 0, 2, 3, 0, true),
+            20, 0, 0, 2, 3, 0, true, 1),
     TOWN_HALL("Town Hall", null, ResourceType.NONE,
-            0, 0, 0, 0, 0, 3, false) {
+            0, 0, 0, 0, 0, 3, false, 1) {
         @Override
         public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
                                       List<Tile> allTiles) {
@@ -34,7 +34,7 @@ public enum BuildingType {
         }
     },
     SETTLEMENT("Settlement", null, ResourceType.NONE,
-            25, 15, 10, 0, 2, 2, true) {
+            25, 15, 10, 0, 2, 2, true, 1) {
         @Override
         public boolean isUnlocked(boolean stoneTech, boolean ironTech, boolean settlementTech) {
             return settlementTech;
@@ -52,7 +52,7 @@ public enum BuildingType {
         }
     },
     DOCK("Dock", null, ResourceType.FISH,
-            30, 0, 0, 2, 2, 0, true) {
+            30, 0, 0, 2, 2, 0, true, 1) {
         @Override
         public boolean isBuildableAt(Tile tile, List<Tile> allTiles) {
             if (!tile.getTerrain().isPassable() || tile.getTerrain() == TerrainType.SEA) return false;
@@ -80,7 +80,11 @@ public enum BuildingType {
                 }
             }
         }
-    };
+    },
+    BAZAAR("Bazaar", null, ResourceType.NONE,
+            40, 20, 0, 0, 2, 0, true, 2),
+    TRADING_POST("Trading Post", null, ResourceType.NONE,
+            0, 0, 0, 0, 0, 0, false, 1);
 
     private final String displayName;
     private final TerrainType requiredTerrain;
@@ -96,10 +100,11 @@ public enum BuildingType {
     private final int visionRadius;
 
     private final boolean isPlayerBuildable;
+    private final int requiredTownHallLevel;
 
     BuildingType(String displayName, TerrainType requiredTerrain, ResourceType outputResource,
                  int woodCost, int stoneCost, int ironCost, int maxWorkerCapacity, int apCost, int visionRadius,
-                 boolean isPlayerBuildable) {
+                 boolean isPlayerBuildable, int requiredTownHallLevel) {
         this.displayName = displayName;
         this.requiredTerrain = requiredTerrain;
         this.outputResource = outputResource;
@@ -110,6 +115,7 @@ public enum BuildingType {
         this.apCost = apCost;
         this.visionRadius = visionRadius;
         this.isPlayerBuildable = isPlayerBuildable;
+        this.requiredTownHallLevel = requiredTownHallLevel;
     }
 
     public String getDisplayName() {
@@ -162,6 +168,10 @@ public enum BuildingType {
 
     public boolean isPlayerBuildable() {
         return isPlayerBuildable;
+    }
+
+    public int getRequiredTownHallLevel() {
+        return requiredTownHallLevel;
     }
 
     public boolean isBuildableOnTerrain(TerrainType terrain) {

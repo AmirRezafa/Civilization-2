@@ -18,16 +18,18 @@ public class WorldGenerator {
         public final Building townhallBuilding;
         public final List<Unit> initialUnits;
         public final Map<HexEdge, EdgeFeature> edgeFeatures;
+        public final List<Building> neutralBuildings;
 
         public WorldData(ArrayList<Tile> tiles, Tile[][] tileGrid, Tile townhall,
                           Building townhallBuilding, List<Unit> initialUnits,
-                          Map<HexEdge, EdgeFeature> edgeFeatures) {
+                          Map<HexEdge, EdgeFeature> edgeFeatures, List<Building> neutralBuildings) {
             this.tiles = tiles;
             this.tileGrid = tileGrid;
             this.townhall = townhall;
             this.townhallBuilding = townhallBuilding;
             this.initialUnits = initialUnits;
             this.edgeFeatures = edgeFeatures;
+            this.neutralBuildings = neutralBuildings;
         }
     }
 
@@ -139,8 +141,32 @@ public class WorldGenerator {
         initialUnits.add(new Unit(UnitType.EXPLORER, townhallX + 1, townhallY + 1));
 
         Map<HexEdge, EdgeFeature> edgeFeatures = generateRivers(tempTiles, rows, cols, random);
+        List<Building> neutralBuildings = placeTradingPosts(tempTiles, townhallX, townhallY, random);
 
-        return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits, edgeFeatures);
+        return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits, edgeFeatures, neutralBuildings);
+    }
+
+    private List<Building> placeTradingPosts(List<Tile> tiles, int townhallX, int townhallY, Random random) {
+        List<Building> posts = new ArrayList<>();
+        int placed = 0;
+        int attempts = 0;
+
+        while (placed < 3 && attempts < 200) {
+            attempts++;
+            Tile candidate = tiles.get(random.nextInt(tiles.size()));
+            if (!candidate.getTerrain().isPassable()) continue;
+            if (candidate.getBuilding() != null) continue;
+
+            double distSq = Math.pow(candidate.getCol() - townhallX, 2) + Math.pow(candidate.getRow() - townhallY, 2);
+            if (distSq < 100) continue;
+
+            Building post = new Building(BuildingType.TRADING_POST, candidate.getCol(), candidate.getRow());
+            candidate.setBuilding(post);
+            posts.add(post);
+            placed++;
+        }
+
+        return posts;
     }
 
     private Map<HexEdge, EdgeFeature> generateRivers(List<Tile> tiles, int rows, int cols, Random random) {

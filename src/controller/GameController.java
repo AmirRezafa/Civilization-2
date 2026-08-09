@@ -5,6 +5,7 @@ import controller.events.HUDChangedEvent;
 import controller.events.StarvationEvent;
 import controller.events.UnitActionsChangedEvent;
 import controller.services.FogOfWarService;
+import controller.services.TradeService;
 import controller.services.TurnProcessor;
 import controller.services.WorldGenerator;
 import model.*;
@@ -24,6 +25,7 @@ public class GameController {
     private Camera camera;
     private FogOfWarService fogOfWarService;
     private TurnProcessor turnProcessor;
+    private final TradeService tradeService = new TradeService();
 
     final static int ROWS = 100, COLS = 100;
 
@@ -66,6 +68,7 @@ public class GameController {
         this.Townhall = worldData.townhall;
         this.edgeFeatures = worldData.edgeFeatures;
         this.buildings.add(worldData.townhallBuilding);
+        this.buildings.addAll(worldData.neutralBuildings);
         for (Unit unit : worldData.initialUnits) {
             addUnit(unit);
         }
@@ -348,6 +351,41 @@ public class GameController {
             if (b.getType() == BuildingType.STABLE) return true;
         }
         return false;
+    }
+
+    public boolean hasBuildingType(BuildingType type) {
+        for (Building b : buildings) {
+            if (b.getType() == type) return true;
+        }
+        return false;
+    }
+
+    public boolean canUseBazaar() {
+        return tradeService.canUseBazaar();
+    }
+
+    public boolean canUseTradingPost() {
+        return tradeService.canUseTradingPost();
+    }
+
+    public double bazaarRateForTier(int amount) {
+        return tradeService.bazaarRateForTier(amount);
+    }
+
+    public boolean tradeAtBazaar(ResourceType from, ResourceType to, int tierAmount) {
+        boolean success = tradeService.tradeAtBazaar(economy, from, to, tierAmount);
+        if (success) EventBus.publish(new HUDChangedEvent());
+        return success;
+    }
+
+    public boolean tradeAtTradingPost(ResourceType from, ResourceType to, int amount) {
+        boolean success = tradeService.tradeAtTradingPost(economy, from, to, amount);
+        if (success) EventBus.publish(new HUDChangedEvent());
+        return success;
+    }
+
+    public void resetTradeTurn() {
+        tradeService.resetTurn();
     }
 
 

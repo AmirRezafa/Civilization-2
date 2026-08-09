@@ -45,6 +45,18 @@ public class BuildingView {
                 bgColor = new Color(46, 204, 113);
                 label = "C";
                 break;
+            case DOCK:
+                bgColor = new Color(52, 73, 94);
+                label = "D";
+                break;
+            case BAZAAR:
+                bgColor = new Color(211, 84, 0);
+                label = "BZ";
+                break;
+            case TRADING_POST:
+                bgColor = new Color(127, 140, 141);
+                label = "TP";
+                break;
             default:
                 bgColor = Color.WHITE;
                 label = "?";
