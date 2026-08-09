@@ -3,13 +3,13 @@ package model;
 public enum TownHallLevel {
     LEVEL_1("Town Hall", 1, 200,
             100, 100, 100, 100, 100, 100,
-            0, 0, 0, 0, 0),
+            0, 0, 0, 0, 0, 5),
     LEVEL_2("Settlement", 2, 200,
             150, 150, 250, 200, 180, 150,
-            50, 50, 0, 3, 50),
+            50, 50, 0, 3, 50, 8),
     LEVEL_3("Capital", 3, 200,
             400, 400, 600, 500, 400, 400,
-            0, 100, 50, 5, 0);
+            0, 100, 50, 5, 0, 12);
 
     private final String displayName;
     private final int levelNumber;
@@ -29,10 +29,12 @@ public enum TownHallLevel {
 
     private final int healOnUpgrade;
 
+    private final int militaryUnitCap;
+
     TownHallLevel(String displayName, int levelNumber, int maxHP,
                   int cattleCapacity, int wheatCapacity, int woodCapacity, int stoneCapacity, int ironCapacity,
                   int fishCapacity, int upgradeWoodCost, int upgradeStoneCost, int upgradeIronCost, int upgradeTurns,
-                  int healOnUpgrade) {
+                  int healOnUpgrade, int militaryUnitCap) {
         this.displayName = displayName;
         this.levelNumber = levelNumber;
         this.maxHP = maxHP;
@@ -47,6 +49,7 @@ public enum TownHallLevel {
         this.upgradeIronCost = upgradeIronCost;
         this.upgradeTurns = upgradeTurns;
         this.healOnUpgrade = healOnUpgrade;
+        this.militaryUnitCap = militaryUnitCap;
     }
 
     public String getDisplayName() {
@@ -103,6 +106,10 @@ public enum TownHallLevel {
 
     public int getHealOnUpgrade() {
         return healOnUpgrade;
+    }
+
+    public int getMilitaryUnitCap() {
+        return militaryUnitCap;
     }
 
     public TownHallLevel getNextLevel() {

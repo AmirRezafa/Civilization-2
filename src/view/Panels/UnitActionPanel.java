@@ -80,7 +80,9 @@ public class UnitActionPanel extends JPanel {
 
             boolean canAfford = GC.hasEnoughFood(uType.getFoodCost()) &&
                     GC.checkUnitCap();
-            trainBtn.setEnabled(canAfford);
+            boolean militaryCapOk = !GC.isMilitaryUnit(uType) || GC.checkMilitaryUnitCap();
+            boolean stableOk = uType != UnitType.CAVALRY || GC.hasStable();
+            trainBtn.setEnabled(canAfford && militaryCapOk && stableOk);
 
             trainBtn.addActionListener(e -> {
                 GC.startProducingUnitInTownHall(uType);

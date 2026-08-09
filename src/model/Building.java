@@ -32,8 +32,10 @@ public class Building {
         if (type == BuildingType.TOWN_HALL) {
             this.townHallLevel = TownHallLevel.LEVEL_1;
             this.maxHP = townHallLevel.getMaxHP();
-            this.hp = maxHP;
+        } else {
+            this.maxHP = 50;
         }
+        this.hp = maxHP;
     }
 
     public int getCol() {
@@ -151,5 +153,13 @@ public class Building {
 
     public void heal(int amount) {
         hp = Math.min(maxHP, hp + amount);
+    }
+
+    public void takeDamage(int amount) {
+        hp = Math.max(0, hp - amount);
+    }
+
+    public boolean isDestroyed() {
+        return hp <= 0;
     }
 }

@@ -314,6 +314,42 @@ public class GameController {
         return (units.size() < unitCapacity);
     }
 
+    public boolean canStackAt(int col, int row, UnitType type) {
+        if (type != UnitType.SWORDSMAN && type != UnitType.ARCHER && type != UnitType.CAVALRY) return true;
+
+        int cap = (type == UnitType.CAVALRY) ? 1 : 2;
+        int count = 0;
+        for (Unit u : units) {
+            if (u.getCol() == col && u.getRow() == row && u.getType() == type) count++;
+        }
+        return count < cap;
+    }
+
+    public int getMilitaryUnitCount() {
+        int count = 0;
+        for (Unit u : units) {
+            if (u.getType() == UnitType.SWORDSMAN || u.getType() == UnitType.ARCHER || u.getType() == UnitType.CAVALRY) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public boolean checkMilitaryUnitCap() {
+        return getMilitaryUnitCount() < getTownHallLevel().getMilitaryUnitCap();
+    }
+
+    public boolean isMilitaryUnit(UnitType type) {
+        return type == UnitType.SWORDSMAN || type == UnitType.ARCHER || type == UnitType.CAVALRY;
+    }
+
+    public boolean hasStable() {
+        for (Building b : buildings) {
+            if (b.getType() == BuildingType.STABLE) return true;
+        }
+        return false;
+    }
+
 
     public void expandTerritory() {
         tileUnderUnit.setOwned();

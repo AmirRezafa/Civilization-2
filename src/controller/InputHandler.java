@@ -89,6 +89,10 @@ public class InputHandler extends MouseAdapter {
                         return;
                     }
 
+                    if (!gc.canStackAt(clickedTile.getCol(), clickedTile.getRow(), selectedUnit.getType())) {
+                        return;
+                    }
+
                     EdgeFeature edge = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
                             clickedTile.getCol(), clickedTile.getRow());
 

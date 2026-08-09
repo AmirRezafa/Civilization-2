@@ -28,6 +28,18 @@ public class UnitView {
                 unitColor = new Color(26, 188, 156);
                 label = "BE"; //Momkene bezane biroon choon 2 harfi e
                 break;
+            case SWORDSMAN:
+                unitColor = new Color(192, 57, 43);
+                label = "S";
+                break;
+            case ARCHER:
+                unitColor = new Color(212, 172, 13);
+                label = "A";
+                break;
+            case CAVALRY:
+                unitColor = new Color(120, 66, 18);
+                label = "C";
+                break;
             default:
                 unitColor = Color.RED;
                 label = "U";

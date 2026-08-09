@@ -13,6 +13,8 @@ public class Unit {
     private int charge;
     private boolean assigned = false;
 
+    private int hp;
+
     public Unit(UnitType type, int startCol, int startRow) {
         this.type = type;
         this.col = startCol;
@@ -22,6 +24,7 @@ public class Unit {
         this.currentAP = type.getMaxAP();
         this.charge = type.getChargesCount();
         this.isMoving = false;
+        this.hp = type.getMaxHP();
     }
 
     public boolean move(int targetCol, int targetRow, int movementCost) {
@@ -114,5 +117,17 @@ public class Unit {
 
     public void setAssigned(boolean assigned) {
         this.assigned = assigned;
+    }
+
+    public int getHP() {
+        return hp;
+    }
+
+    public void takeHit() {
+        hp--;
+    }
+
+    public boolean isDead() {
+        return hp <= 0;
     }
 }
