@@ -1,6 +1,7 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public enum BuildingType {
     LUMBER_MILL("Lumber Mill", TerrainType.FOREST, ResourceType.WOOD,
@@ -26,7 +27,8 @@ public enum BuildingType {
     TOWN_HALL("Town Hall", null, ResourceType.NONE,
             0, 0, 0, 0, 0, 3, false) {
         @Override
-        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker) {
+        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                      List<Tile> allTiles) {
             economy.addResource(ResourceType.WHEAT, 1);
             economy.addResource(ResourceType.WOOD, 1);
         }
@@ -44,8 +46,39 @@ public enum BuildingType {
         }
 
         @Override
-        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker) {
+        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                      List<Tile> allTiles) {
             // Settlements never produce resource output, even when occupied
+        }
+    },
+    DOCK("Dock", null, ResourceType.FISH,
+            30, 0, 0, 2, 2, 0, true) {
+        @Override
+        public boolean isBuildableAt(Tile tile, List<Tile> allTiles) {
+            if (!tile.getTerrain().isPassable() || tile.getTerrain() == TerrainType.SEA) return false;
+
+            for (Tile other : allTiles) {
+                if (other.getTerrain() == TerrainType.SEA &&
+                        HexUtils.isNeighbor(tile.getCol(), tile.getRow(), other.getCol(), other.getRow())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                      List<Tile> allTiles) {
+            if (!building.isOccupied()) return;
+
+            for (Tile other : allTiles) {
+                if (other.getTerrain() == TerrainType.SEA && other.hasResource(ResourceType.FISH) &&
+                        HexUtils.isNeighbor(tile.getCol(), tile.getRow(), other.getCol(), other.getRow())) {
+                    economy.addResource(ResourceType.FISH,
+                            other.extractResource(ResourceType.FISH, ratePerWorker * building.getStationedWorkers().size()));
+                    return;
+                }
+            }
         }
     };
 
@@ -135,6 +168,10 @@ public enum BuildingType {
         return requiredTerrain == null || requiredTerrain == terrain;
     }
 
+    public boolean isBuildableAt(Tile tile, List<Tile> allTiles) {
+        return isBuildableOnTerrain(tile.getTerrain());
+    }
+
     public boolean isUnlocked(boolean stoneTech, boolean ironTech, boolean settlementTech) {
         return true;
     }
@@ -143,7 +180,8 @@ public enum BuildingType {
         return 0;
     }
 
-    public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker) {
+    public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                  List<Tile> allTiles) {
         if (!building.isOccupied()) return;
 
         ResourceType targetResource = getOutputResource();

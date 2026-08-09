@@ -117,7 +117,7 @@ public class UnitActionPanel extends JPanel {
             buildBtn.setFocusable(false);
             buildBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
 
-            boolean isValidTerrain = bType.isBuildableOnTerrain(currentTile.getTerrain())
+            boolean isValidTerrain = bType.isBuildableAt(currentTile, GC.getTiles())
                     && bType.isUnlocked(GC.hasStoneTech(), GC.hasIronTech(), GC.hasSettlementTech());
             boolean isTileEmpty = (currentTile.getBuilding() == null);
             boolean inTerritory = currentTile.isOwned();
@@ -131,6 +131,50 @@ public class UnitActionPanel extends JPanel {
 
             buttonContainer.add(buildBtn);
         }
+    }
+
+    private void showEdgeBuildButtons() {
+        JButton roadBtn = new JButton("Build Road (10 Wood) - then right-click a neighbor");
+        roadBtn.setFocusable(false);
+        roadBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        roadBtn.setEnabled(GC.hasEnoughWood(10));
+        roadBtn.addActionListener(e -> {
+            GC.startBuildingEdge(EdgeFeature.ROAD);
+            updateActions();
+        });
+        buttonContainer.add(roadBtn);
+
+        JButton wallBtn = new JButton("Build Wall (30 Stone) - then right-click a neighbor");
+        wallBtn.setFocusable(false);
+        wallBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        wallBtn.setEnabled(GC.hasEnoughStone(30));
+        wallBtn.addActionListener(e -> {
+            GC.startBuildingEdge(EdgeFeature.WALL);
+            updateActions();
+        });
+        buttonContainer.add(wallBtn);
+    }
+
+    private void showDeconstructButtons(Tile currentTile) {
+        if (currentTile.getBuilding() != null && currentTile.getBuilding().getType() != BuildingType.TOWN_HALL) {
+            JButton deconstructBtn = new JButton("Deconstruct " + currentTile.getBuilding().getType().getDisplayName() + " (1 AP)");
+            deconstructBtn.setFocusable(false);
+            deconstructBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            deconstructBtn.addActionListener(e -> {
+                GC.deconstructBuilding();
+                updateActions();
+            });
+            buttonContainer.add(deconstructBtn);
+        }
+
+        JButton deconstructEdgeBtn = new JButton("Deconstruct Road/Wall (1 AP) - then right-click a neighbor");
+        deconstructEdgeBtn.setFocusable(false);
+        deconstructEdgeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        deconstructEdgeBtn.addActionListener(e -> {
+            GC.startDeconstructingEdge();
+            updateActions();
+        });
+        buttonContainer.add(deconstructEdgeBtn);
     }
 
     private void showWorkHereButton(){
@@ -309,6 +353,8 @@ public class UnitActionPanel extends JPanel {
 
         if (selectedUnit.getType() == UnitType.BUILDER) {
             showBuildButtons(currentTile);
+            showEdgeBuildButtons();
+            showDeconstructButtons(currentTile);
             setVisible(true);
         }else if(selectedUnit.getType() == UnitType.WORKER){
             Building build = GC.getTileUnderUnit().getBuilding();

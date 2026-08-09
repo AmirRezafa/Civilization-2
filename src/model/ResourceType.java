@@ -6,7 +6,8 @@ public enum ResourceType {
     STONE("Stone Outcrops", CoreResource.STONE),
     IRON("Iron Veins", CoreResource.IRON),
     WHEAT("Wheat and Rice Fields", CoreResource.FOOD),
-    CATTLE("Livestock (Cattle and Sheep)", CoreResource.FOOD);
+    CATTLE("Livestock (Cattle and Sheep)", CoreResource.FOOD),
+    FISH("Fish Shoals", CoreResource.FOOD);
 
     private final String displayName;
     private final CoreResource coreResourceType;

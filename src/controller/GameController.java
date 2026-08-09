@@ -37,6 +37,8 @@ public class GameController {
 
     private Unit selectedUnit = null;
     private Tile tileUnderUnit = null;
+    private EdgeFeature pendingEdgeBuild = null;
+    private boolean pendingEdgeDeconstruct = false;
 
     private int currentTurn = 1;
 
@@ -131,6 +133,66 @@ public class GameController {
 
     public EdgeFeature getEdgeFeature(int col1, int row1, int col2, int row2) {
         return edgeFeatures.getOrDefault(new HexEdge(col1, row1, col2, row2), EdgeFeature.NONE);
+    }
+
+    public void startBuildingEdge(EdgeFeature feature) {
+        pendingEdgeBuild = feature;
+    }
+
+    public EdgeFeature getPendingEdgeBuild() {
+        return pendingEdgeBuild;
+    }
+
+    public boolean buildEdgeFeature(int col1, int row1, int col2, int row2, EdgeFeature feature) {
+        int woodCost = feature == EdgeFeature.ROAD ? 10 : 0;
+        int stoneCost = feature == EdgeFeature.WALL ? 30 : 0;
+        int apCost = feature == EdgeFeature.ROAD ? 1 : 2;
+
+        if (selectedUnit == null || selectedUnit.getCurrentAP() < apCost) return false;
+        if (!(economy.hasEnough(ResourceType.WOOD, woodCost) && economy.hasEnough(ResourceType.STONE, stoneCost)))
+            return false;
+
+        economy.spendResource(ResourceType.WOOD, woodCost);
+        economy.spendResource(ResourceType.STONE, stoneCost);
+        selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - apCost);
+
+        edgeFeatures.put(new HexEdge(col1, row1, col2, row2), feature);
+        pendingEdgeBuild = null;
+        EventBus.publish(new HUDChangedEvent());
+        return true;
+    }
+
+    public void startDeconstructingEdge() {
+        pendingEdgeDeconstruct = true;
+    }
+
+    public boolean isPendingEdgeDeconstruct() {
+        return pendingEdgeDeconstruct;
+    }
+
+    public boolean deconstructEdge(int col1, int row1, int col2, int row2) {
+        EdgeFeature feature = getEdgeFeature(col1, row1, col2, row2);
+        if (feature != EdgeFeature.ROAD && feature != EdgeFeature.WALL) return false;
+        if (selectedUnit == null || selectedUnit.getCurrentAP() < 1) return false;
+
+        selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
+        edgeFeatures.remove(new HexEdge(col1, row1, col2, row2));
+        pendingEdgeDeconstruct = false;
+        EventBus.publish(new HUDChangedEvent());
+        return true;
+    }
+
+    public boolean deconstructBuilding() {
+        if (selectedUnit == null || selectedUnit.getType() != UnitType.BUILDER) return false;
+        if (tileUnderUnit == null || tileUnderUnit.getBuilding() == null) return false;
+        if (tileUnderUnit.getBuilding().getType() == BuildingType.TOWN_HALL) return false;
+        if (selectedUnit.getCurrentAP() < 1) return false;
+
+        selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
+        buildings.remove(tileUnderUnit.getBuilding());
+        tileUnderUnit.setBuilding(null);
+        EventBus.publish(new HUDChangedEvent());
+        return true;
     }
 
     public Tile getTownhall() {
@@ -271,7 +333,7 @@ public class GameController {
 
     public void applyTownHallStorage(TownHallLevel level) {
         economy.updateStorage(level.getCattleCapacity(), level.getWheatCapacity(), level.getWoodCapacity(),
-                level.getStoneCapacity(), level.getIronCapacity());
+                level.getStoneCapacity(), level.getIronCapacity(), level.getFishCapacity());
     }
 
     public boolean upgradeTownHall() {

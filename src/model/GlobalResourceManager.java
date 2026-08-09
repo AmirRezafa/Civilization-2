@@ -13,7 +13,7 @@ public class GlobalResourceManager {
         this.resourcesCapacity = new HashMap<>();
         this.resourceNetChanges = new HashMap<>();
 
-        updateStorage(100, 100, 100, 100, 100);
+        updateStorage(100, 100, 100, 100, 100, 100);
 
         initRegistry();
     }
@@ -84,12 +84,13 @@ public class GlobalResourceManager {
         return resourcesCapacity.getOrDefault(type, 0);
     }
 
-    public void updateStorage(int cattle, int wheat, int wood, int stone, int iron) {
+    public void updateStorage(int cattle, int wheat, int wood, int stone, int iron, int fish) {
         resourcesCapacity.put(ResourceType.CATTLE, cattle);
         resourcesCapacity.put(ResourceType.WHEAT, wheat);
         resourcesCapacity.put(ResourceType.WOOD, wood);
         resourcesCapacity.put(ResourceType.STONE, stone);
         resourcesCapacity.put(ResourceType.IRON, iron);
+        resourcesCapacity.put(ResourceType.FISH, fish);
     }
 
     public void addNetChanges(ResourceType type, int netChange){

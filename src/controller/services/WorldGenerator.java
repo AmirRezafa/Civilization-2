@@ -115,6 +115,11 @@ public class WorldGenerator {
                         if (random.nextDouble() < 0.30)
                             tileResources.put(ResourceType.WHEAT, 300);
                         break;
+
+                    case SEA:
+                        if (random.nextDouble() < 0.30)
+                            tileResources.put(ResourceType.FISH, 300);
+                        break;
                 }
                 Tile tile = new Tile(col, row, finalType, tileResources);
                 tileGrid[col][row] = tile;

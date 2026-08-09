@@ -2,13 +2,13 @@ package model;
 
 public enum TownHallLevel {
     LEVEL_1("Town Hall", 1, 200,
-            100, 100, 100, 100, 100,
+            100, 100, 100, 100, 100, 100,
             0, 0, 0, 0, 0),
     LEVEL_2("Settlement", 2, 200,
-            150, 150, 250, 200, 180,
+            150, 150, 250, 200, 180, 150,
             50, 50, 0, 3, 50),
     LEVEL_3("Capital", 3, 200,
-            400, 400, 600, 500, 400,
+            400, 400, 600, 500, 400, 400,
             0, 100, 50, 5, 0);
 
     private final String displayName;
@@ -20,6 +20,7 @@ public enum TownHallLevel {
     private final int woodCapacity;
     private final int stoneCapacity;
     private final int ironCapacity;
+    private final int fishCapacity;
 
     private final int upgradeWoodCost;
     private final int upgradeStoneCost;
@@ -30,7 +31,7 @@ public enum TownHallLevel {
 
     TownHallLevel(String displayName, int levelNumber, int maxHP,
                   int cattleCapacity, int wheatCapacity, int woodCapacity, int stoneCapacity, int ironCapacity,
-                  int upgradeWoodCost, int upgradeStoneCost, int upgradeIronCost, int upgradeTurns,
+                  int fishCapacity, int upgradeWoodCost, int upgradeStoneCost, int upgradeIronCost, int upgradeTurns,
                   int healOnUpgrade) {
         this.displayName = displayName;
         this.levelNumber = levelNumber;
@@ -40,6 +41,7 @@ public enum TownHallLevel {
         this.woodCapacity = woodCapacity;
         this.stoneCapacity = stoneCapacity;
         this.ironCapacity = ironCapacity;
+        this.fishCapacity = fishCapacity;
         this.upgradeWoodCost = upgradeWoodCost;
         this.upgradeStoneCost = upgradeStoneCost;
         this.upgradeIronCost = upgradeIronCost;
@@ -77,6 +79,10 @@ public enum TownHallLevel {
 
     public int getIronCapacity() {
         return ironCapacity;
+    }
+
+    public int getFishCapacity() {
+        return fishCapacity;
     }
 
     public int getUpgradeWoodCost() {

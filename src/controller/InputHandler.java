@@ -72,11 +72,33 @@ public class InputHandler extends MouseAdapter {
             Unit selectedUnit = gc.getSelectedUnit();
             if (selectedUnit != null) {
                 if (HexUtils.isNeighbor(selectedUnit.getCol(), selectedUnit.getRow(), clickedTile.getCol(), clickedTile.getRow())) {
-                    int movementCost = clickedTile.getTerrain().getMovementCost();
+                    EdgeFeature pending = gc.getPendingEdgeBuild();
+                    if (pending != null) {
+                        if (gc.buildEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
+                                clickedTile.getCol(), clickedTile.getRow(), pending)) {
+                            EventBus.publish(new UnitActionsChangedEvent());
+                        }
+                        return;
+                    }
+
+                    if (gc.isPendingEdgeDeconstruct()) {
+                        if (gc.deconstructEdge(selectedUnit.getCol(), selectedUnit.getRow(),
+                                clickedTile.getCol(), clickedTile.getRow())) {
+                            EventBus.publish(new UnitActionsChangedEvent());
+                        }
+                        return;
+                    }
 
                     EdgeFeature edge = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
                             clickedTile.getCol(), clickedTile.getRow());
-                    if (edge == EdgeFeature.RIVER) movementCost += 2;
+
+                    int movementCost;
+                    if (edge == EdgeFeature.ROAD) {
+                        movementCost = 1;
+                    } else {
+                        movementCost = clickedTile.getTerrain().getMovementCost();
+                        if (edge == EdgeFeature.RIVER) movementCost += 2;
+                    }
 
                     if(selectedUnit.move(clickedTile.getCol(), clickedTile.getRow(), movementCost)){
                         gc.setTileUnderUnit(clickedTile);

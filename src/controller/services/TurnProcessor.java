@@ -31,7 +31,7 @@ public class TurnProcessor {
         }
 
         int ratePerWorker = (int)((gc.hasProToolsTech() ? 1.5 : 1) * BASE_PRODUCTION_RATE);
-        type.produceResources(building, tile, economy, ratePerWorker);
+        type.produceResources(building, tile, economy, ratePerWorker, gc.getTiles());
     }
 
     public void advanceTurn(){
