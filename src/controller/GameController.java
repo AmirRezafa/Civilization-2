@@ -4,8 +4,10 @@ import controller.events.EventBus;
 import controller.events.HUDChangedEvent;
 import controller.events.StarvationEvent;
 import controller.events.UnitActionsChangedEvent;
+import controller.services.DisasterService;
 import controller.services.FogOfWarService;
 import controller.services.TradeService;
+import controller.services.TribeService;
 import controller.services.TurnProcessor;
 import controller.services.WorldGenerator;
 import model.*;
@@ -26,6 +28,10 @@ public class GameController {
     private FogOfWarService fogOfWarService;
     private TurnProcessor turnProcessor;
     private final TradeService tradeService = new TradeService();
+    private final GlobalHappinessManager happinessManager = new GlobalHappinessManager();
+    private final TribeService tribeService = new TribeService();
+    private List<Tribe> tribes;
+    private final DisasterService disasterService = new DisasterService();
 
     final static int ROWS = 100, COLS = 100;
 
@@ -69,12 +75,11 @@ public class GameController {
         this.edgeFeatures = worldData.edgeFeatures;
         this.buildings.add(worldData.townhallBuilding);
         this.buildings.addAll(worldData.neutralBuildings);
+        this.tribes = worldData.tribes;
         for (Unit unit : worldData.initialUnits) {
             addUnit(unit);
         }
-        tileUnderUnit = Townhall;
-        expandTerritory();
-        tileUnderUnit = null;
+        markTilesOwned(Townhall);
 
         fogOfWarService = new FogOfWarService(ROWS, COLS, tileGrid, Tiles, units, buildings);
         updateFog();
@@ -209,6 +214,9 @@ public class GameController {
     public void addUnit(Unit unit){
         units.add(unit);
         unitCount.put(unit.getType(), unitCount.getOrDefault(unit.getType(), 0) + 1);
+        if (units.size() == unitCapacity) {
+            happinessManager.addHappiness(-1);
+        }
     }
 
     public void deleteUnit(Unit unit){
@@ -234,6 +242,59 @@ public class GameController {
 
     public GlobalResourceManager getEconomy() {
         return economy;
+    }
+
+    public GlobalHappinessManager getHappinessManager() {
+        return happinessManager;
+    }
+
+    public List<Tribe> getTribes() {
+        return tribes;
+    }
+
+    public boolean sendGiftToTribe(Tribe tribe, ResourceType resource, int amount) {
+        if (!economy.hasEnough(resource, amount)) return false;
+
+        economy.spendResource(resource, amount);
+        tribeService.sendGift(tribe, amount);
+        EventBus.publish(new HUDChangedEvent());
+        return true;
+    }
+
+    public boolean captureTribeCamp(Tribe tribe) {
+        Tile tile = tileGrid[tribe.getCol()][tribe.getRow()];
+        Building camp = tile.getBuilding();
+        if (camp == null || camp.getType() != BuildingType.TRIBE_CAMP) return false;
+        if (!camp.isDestroyed()) return false;
+
+        buildings.remove(camp);
+        Building outpost = new Building(BuildingType.OUTPOST, tribe.getCol(), tribe.getRow());
+        buildings.add(outpost);
+        tile.setBuilding(outpost);
+
+        economy.addResource(ResourceType.WOOD, 50);
+        tribeService.recordWar(tribe);
+
+        EventBus.publish(new HUDChangedEvent());
+        return true;
+    }
+
+    public Season getCurrentSeason() {
+        return Season.fromTurn(currentTurn);
+    }
+
+    public void removeDestroyedBuilding(Building building) {
+        buildings.remove(building);
+        Tile tile = tileGrid[building.getCol()][building.getRow()];
+        if (tile.getBuilding() == building) {
+            tile.setBuilding(null);
+        }
+    }
+
+    public DisasterType rollForDisaster() {
+        DisasterType disaster = disasterService.rollForDisaster(this);
+        if (disaster != null) EventBus.publish(new HUDChangedEvent());
+        return disaster;
     }
 
     public int getCurrentTurn() {
@@ -389,13 +450,18 @@ public class GameController {
     }
 
 
-    public void expandTerritory() {
-        tileUnderUnit.setOwned();
+    private void markTilesOwned(Tile center) {
+        center.setOwned();
         for (Tile tile: Tiles) {
-            if (HexUtils.isNeighbor(tile.getCol(), tile.getRow(), tileUnderUnit.getCol(), tileUnderUnit.getRow())) {
+            if (HexUtils.isNeighbor(tile.getCol(), tile.getRow(), center.getCol(), center.getRow())) {
                 tile.setOwned();
             }
         }
+    }
+
+    public void expandTerritory() {
+        markTilesOwned(tileUnderUnit);
+        happinessManager.addHappiness(-1);
         if(selectedUnit == null) return;
         deleteUnit(selectedUnit);
         selectedUnit = null;

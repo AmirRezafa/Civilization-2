@@ -57,6 +57,14 @@ public class BuildingView {
                 bgColor = new Color(127, 140, 141);
                 label = "TP";
                 break;
+            case TRIBE_CAMP:
+                bgColor = new Color(155, 40, 40);
+                label = "TC";
+                break;
+            case OUTPOST:
+                bgColor = new Color(39, 174, 96);
+                label = "O";
+                break;
             default:
                 bgColor = Color.WHITE;
                 label = "?";

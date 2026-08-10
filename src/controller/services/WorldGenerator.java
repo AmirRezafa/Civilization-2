@@ -19,10 +19,12 @@ public class WorldGenerator {
         public final List<Unit> initialUnits;
         public final Map<HexEdge, EdgeFeature> edgeFeatures;
         public final List<Building> neutralBuildings;
+        public final List<Tribe> tribes;
 
         public WorldData(ArrayList<Tile> tiles, Tile[][] tileGrid, Tile townhall,
                           Building townhallBuilding, List<Unit> initialUnits,
-                          Map<HexEdge, EdgeFeature> edgeFeatures, List<Building> neutralBuildings) {
+                          Map<HexEdge, EdgeFeature> edgeFeatures, List<Building> neutralBuildings,
+                          List<Tribe> tribes) {
             this.tiles = tiles;
             this.tileGrid = tileGrid;
             this.townhall = townhall;
@@ -30,6 +32,7 @@ public class WorldGenerator {
             this.initialUnits = initialUnits;
             this.edgeFeatures = edgeFeatures;
             this.neutralBuildings = neutralBuildings;
+            this.tribes = tribes;
         }
     }
 
@@ -143,7 +146,36 @@ public class WorldGenerator {
         Map<HexEdge, EdgeFeature> edgeFeatures = generateRivers(tempTiles, rows, cols, random);
         List<Building> neutralBuildings = placeTradingPosts(tempTiles, townhallX, townhallY, random);
 
-        return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits, edgeFeatures, neutralBuildings);
+        List<Tribe> tribes = placeTribes(tempTiles, townhallX, townhallY, random);
+        for (Tribe tribe : tribes) {
+            neutralBuildings.add(tileGrid[tribe.getCol()][tribe.getRow()].getBuilding());
+        }
+
+        return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits, edgeFeatures,
+                neutralBuildings, tribes);
+    }
+
+    private List<Tribe> placeTribes(List<Tile> tiles, int townhallX, int townhallY, Random random) {
+        List<Tribe> tribes = new ArrayList<>();
+        int placed = 0;
+        int attempts = 0;
+
+        while (placed < 3 && attempts < 200) {
+            attempts++;
+            Tile candidate = tiles.get(random.nextInt(tiles.size()));
+            if (!candidate.getTerrain().isPassable()) continue;
+            if (candidate.getBuilding() != null) continue;
+
+            double distSq = Math.pow(candidate.getCol() - townhallX, 2) + Math.pow(candidate.getRow() - townhallY, 2);
+            if (distSq < 100) continue;
+
+            Building camp = new Building(BuildingType.TRIBE_CAMP, candidate.getCol(), candidate.getRow());
+            candidate.setBuilding(camp);
+            tribes.add(new Tribe(candidate.getCol(), candidate.getRow()));
+            placed++;
+        }
+
+        return tribes;
     }
 
     private List<Building> placeTradingPosts(List<Tile> tiles, int townhallX, int townhallY, Random random) {

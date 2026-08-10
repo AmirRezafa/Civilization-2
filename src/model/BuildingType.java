@@ -84,7 +84,11 @@ public enum BuildingType {
     BAZAAR("Bazaar", null, ResourceType.NONE,
             40, 20, 0, 0, 2, 0, true, 2),
     TRADING_POST("Trading Post", null, ResourceType.NONE,
-            0, 0, 0, 0, 0, 0, false, 1);
+            0, 0, 0, 0, 0, 0, false, 1),
+    TRIBE_CAMP("Tribe Camp", null, ResourceType.NONE,
+            0, 0, 0, 0, 0, 0, false, 1),
+    OUTPOST("Outpost", null, ResourceType.NONE,
+            0, 0, 0, 0, 0, 2, false, 1);
 
     private final String displayName;
     private final TerrainType requiredTerrain;

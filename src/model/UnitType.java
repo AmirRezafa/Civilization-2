@@ -1,10 +1,10 @@
 package model;
 
 public enum UnitType {
-    EXPLORER("Explorer", 6, 3, 20, 1, 3, 0, 0, 0),
-    BUILDER("Builder", 4, 2, 20, 3, 1, 0, 0, 0),
-    WORKER("Worker", 4, 2, 10, 1, 0, 0, 0, 0),
-    BORDER_EXPANDER("Border Expander", 4, 4, 15, 1, 1, 0, 0, 0),
+    EXPLORER("Explorer", 6, 3, 20, 1, 3, 3, 0, 0),
+    BUILDER("Builder", 4, 2, 20, 3, 1, 3, 0, 0),
+    WORKER("Worker", 4, 2, 10, 1, 0, 3, 0, 0),
+    BORDER_EXPANDER("Border Expander", 4, 4, 15, 1, 1, 3, 0, 0),
     SWORDSMAN("Swordsman", 2, 2, 15, 1, 1, 1, 10, 1),
     ARCHER("Archer", 2, 2, 15, 1, 2, 1, 6, 2),
     CAVALRY("Cavalry", 4, 3, 25, 1, 2, 2, 8, 1);

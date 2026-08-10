@@ -4,6 +4,8 @@ import controller.events.EventBus;
 import controller.events.UnitActionsChangedEvent;
 import model.EdgeFeature;
 import model.HexUtils;
+import model.Season;
+import model.TerrainType;
 import model.Tile;
 import model.Unit;
 
@@ -102,6 +104,13 @@ public class InputHandler extends MouseAdapter {
                     } else {
                         movementCost = clickedTile.getTerrain().getMovementCost();
                         if (edge == EdgeFeature.RIVER) movementCost += 2;
+                    }
+
+                    Season season = gc.getCurrentSeason();
+                    if (clickedTile.getTerrain() == TerrainType.SEA) {
+                        movementCost += season.getWaterMovementPenalty();
+                    } else {
+                        movementCost += season.getLandMovementPenalty();
                     }
 
                     if(selectedUnit.move(clickedTile.getCol(), clickedTile.getRow(), movementCost)){
