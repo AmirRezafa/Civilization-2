@@ -3,7 +3,7 @@ package model;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GlobalResourceManager {
+public class GlobalResourceManager implements java.io.Serializable {
     private final Map<ResourceType, Integer> resources;
     private final Map<ResourceType, Integer> resourcesCapacity;
     private final Map<ResourceType, Integer> resourceNetChanges;

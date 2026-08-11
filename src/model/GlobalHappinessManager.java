@@ -1,6 +1,6 @@
 package model;
 
-public class GlobalHappinessManager {
+public class GlobalHappinessManager implements java.io.Serializable {
     private int happiness = 0;
 
     public void addHappiness(int delta) {

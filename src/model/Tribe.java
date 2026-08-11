@@ -1,8 +1,9 @@
 package model;
 
-public class Tribe {
+public class Tribe implements java.io.Serializable {
     private final int col, row;
     private int relationshipValue = 0;
+    private Quest activeQuest;
 
     public Tribe(int col, int row) {
         this.col = col;
@@ -27,5 +28,13 @@ public class Tribe {
 
     public TribeRelationship getRelationship() {
         return TribeRelationship.fromValue(relationshipValue);
+    }
+
+    public Quest getActiveQuest() {
+        return activeQuest;
+    }
+
+    public void setActiveQuest(Quest quest) {
+        this.activeQuest = quest;
     }
 }

@@ -38,6 +38,9 @@ bin/
 *.jar
 *.war
 
+### Save games ###
+saves/
+
 ### Gradle ###
 .gradle/
 build/

@@ -6,6 +6,7 @@ import controller.events.StarvationEvent;
 import controller.events.UnitActionsChangedEvent;
 import controller.services.DisasterService;
 import controller.services.FogOfWarService;
+import controller.services.SaveLoadService;
 import controller.services.TradeService;
 import controller.services.TribeService;
 import controller.services.TurnProcessor;
@@ -28,10 +29,11 @@ public class GameController {
     private FogOfWarService fogOfWarService;
     private TurnProcessor turnProcessor;
     private final TradeService tradeService = new TradeService();
-    private final GlobalHappinessManager happinessManager = new GlobalHappinessManager();
+    private GlobalHappinessManager happinessManager = new GlobalHappinessManager();
     private final TribeService tribeService = new TribeService();
     private List<Tribe> tribes;
     private final DisasterService disasterService = new DisasterService();
+    private final SaveLoadService saveLoadService = new SaveLoadService();
 
     final static int ROWS = 100, COLS = 100;
 
@@ -41,7 +43,7 @@ public class GameController {
     private ArrayList<Building> buildings = new ArrayList<>();
     private Map<HexEdge, EdgeFeature> edgeFeatures;
 
-    private final GlobalResourceManager economy;
+    private GlobalResourceManager economy;
 
     private Unit selectedUnit = null;
     private Tile tileUnderUnit = null;
@@ -283,6 +285,21 @@ public class GameController {
         return Season.fromTurn(currentTurn);
     }
 
+    public void issueRoadQuestToTribe(Tribe tribe) {
+        tribeService.issueRoadQuest(tribe);
+        EventBus.publish(new HUDChangedEvent());
+    }
+
+    public void checkTribeQuests() {
+        for (Tribe tribe : tribes) {
+            Quest quest = tribe.getActiveQuest();
+            if (quest != null && !quest.isCompleted() && tribeService.isRoadQuestSatisfied(tribe, edgeFeatures)) {
+                tribeService.completeQuest(tribe);
+                EventBus.publish(new HUDChangedEvent());
+            }
+        }
+    }
+
     public void removeDestroyedBuilding(Building building) {
         buildings.remove(building);
         Tile tile = tileGrid[building.getCol()][building.getRow()];
@@ -295,6 +312,60 @@ public class GameController {
         DisasterType disaster = disasterService.rollForDisaster(this);
         if (disaster != null) EventBus.publish(new HUDChangedEvent());
         return disaster;
+    }
+
+    public GameState captureState() {
+        GameState state = new GameState();
+        state.tiles = Tiles;
+        state.tileGrid = tileGrid;
+        state.units = units;
+        state.buildings = buildings;
+        state.edgeFeatures = edgeFeatures;
+        state.economy = economy;
+        state.happinessManager = happinessManager;
+        state.tribes = tribes;
+        state.researchedTechs = researchedTechs;
+        state.unitCount = unitCount;
+        state.currentTurn = currentTurn;
+        state.unitCapacity = unitCapacity;
+        return state;
+    }
+
+    public void restoreState(GameState state) {
+        this.Tiles = state.tiles;
+        this.tileGrid = state.tileGrid;
+        this.units = state.units;
+        this.buildings = state.buildings;
+        this.edgeFeatures = state.edgeFeatures;
+        this.economy = state.economy;
+        this.happinessManager = state.happinessManager;
+        this.tribes = state.tribes;
+        this.researchedTechs = state.researchedTechs;
+        this.unitCount = state.unitCount;
+        this.currentTurn = state.currentTurn;
+        this.unitCapacity = state.unitCapacity;
+
+        this.Townhall = tileGrid[TownhallX][TownhallY];
+        this.selectedUnit = null;
+        this.tileUnderUnit = null;
+
+        fogOfWarService = new FogOfWarService(ROWS, COLS, tileGrid, Tiles, units, buildings);
+        updateFog();
+
+        EventBus.publish(new HUDChangedEvent());
+        EventBus.publish(new UnitActionsChangedEvent());
+    }
+
+    public boolean saveGame(int slot) {
+        return saveLoadService.save(this, slot);
+    }
+
+    public boolean loadGame(int slot) {
+        return saveLoadService.load(this, slot);
+    }
+
+    public void autosave() {
+        saveLoadService.autosave(this);
     }
 
     public int getCurrentTurn() {

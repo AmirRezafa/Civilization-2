@@ -2,7 +2,7 @@ package model;
 
 import java.util.ArrayList;
 
-public class Building {
+public class Building implements java.io.Serializable {
     private int col, row;
 
     private final BuildingType type;

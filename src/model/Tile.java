@@ -2,7 +2,7 @@ package model;
 
 import java.util.Map;
 
-public class Tile {
+public class Tile implements java.io.Serializable {
     private int col, row;
 
     private TerrainType terrain;

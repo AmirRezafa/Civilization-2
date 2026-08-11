@@ -1,6 +1,6 @@
 package model;
 
-public class HexEdge {
+public class HexEdge implements java.io.Serializable {
     private final int col1, row1;
     private final int col2, row2;
 

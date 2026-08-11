@@ -1,6 +1,6 @@
 package model;
 
-public class Unit {
+public class Unit implements java.io.Serializable {
     private UnitType type;
     private int col;
     private int row;

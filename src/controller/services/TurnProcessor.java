@@ -138,5 +138,8 @@ public class TurnProcessor {
                 townHallBuilding.clearProduction();
             }
         }
+
+        gc.checkTribeQuests();
+        gc.autosave();
     }
 }
