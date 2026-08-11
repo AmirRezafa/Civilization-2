@@ -5,6 +5,7 @@ import controller.events.UnitActionsChangedEvent;
 import model.EdgeFeature;
 import model.HexUtils;
 import model.Season;
+import model.TechType;
 import model.TerrainType;
 import model.Tile;
 import model.Unit;
@@ -102,21 +103,27 @@ public class InputHandler extends MouseAdapter {
                         return;
                     }
 
+                    TerrainType targetTerrain = clickedTile.getTerrain();
+                    if (!targetTerrain.isPassable()) {
+                        return;
+                    }
+                    if (targetTerrain == TerrainType.SEA && !gc.hasTech(TechType.SAILING)) {
+                        return;
+                    }
+
                     EdgeFeature edge = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
                             clickedTile.getCol(), clickedTile.getRow());
 
                     int movementCost;
-                    if (edge == EdgeFeature.ROAD) {
+                    if (targetTerrain == TerrainType.SEA) {
+                        movementCost = selectedUnit.getCurrentAP();
+                    } else if (edge == EdgeFeature.ROAD) {
                         movementCost = 1;
                     } else {
-                        movementCost = clickedTile.getTerrain().getMovementCost();
+                        movementCost = targetTerrain.getMovementCost();
                         if (edge == EdgeFeature.RIVER) movementCost += 2;
-                    }
 
-                    Season season = gc.getCurrentSeason();
-                    if (clickedTile.getTerrain() == TerrainType.SEA) {
-                        movementCost += season.getWaterMovementPenalty();
-                    } else {
+                        Season season = gc.getCurrentSeason();
                         movementCost += season.getLandMovementPenalty();
                     }
 

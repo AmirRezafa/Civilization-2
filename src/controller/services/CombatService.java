@@ -44,9 +44,15 @@ public class CombatService {
         }
     }
 
-    public void resolveCombat(List<Unit> attackers, List<Unit> defenders) {
+    public void resolveCombat(List<Unit> attackers, List<Unit> defenders, boolean defenderHasWall) {
         List<Integer> attackerRolls = rollDice(attackers);
         List<Integer> defenderRolls = rollDice(defenders);
+
+        if (defenderHasWall) {
+            for (int i = 0; i < defenderRolls.size(); i++) {
+                defenderRolls.set(i, Math.min(6, defenderRolls.get(i) + 2));
+            }
+        }
 
         attackerRolls.sort(Collections.reverseOrder());
         defenderRolls.sort(Collections.reverseOrder());
