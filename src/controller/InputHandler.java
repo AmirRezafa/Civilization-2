@@ -91,6 +91,13 @@ public class InputHandler extends MouseAdapter {
                         return;
                     }
 
+                    if (gc.isPendingAttack()) {
+                        if (gc.attackAdjacentStructure(clickedTile.getCol(), clickedTile.getRow())) {
+                            EventBus.publish(new UnitActionsChangedEvent());
+                        }
+                        return;
+                    }
+
                     if (!gc.canStackAt(clickedTile.getCol(), clickedTile.getRow(), selectedUnit.getType())) {
                         return;
                     }

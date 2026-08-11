@@ -4,6 +4,7 @@ import controller.events.EventBus;
 import controller.events.HUDChangedEvent;
 import controller.events.StarvationEvent;
 import controller.events.UnitActionsChangedEvent;
+import controller.services.CombatService;
 import controller.services.DisasterService;
 import controller.services.FogOfWarService;
 import controller.services.SaveLoadService;
@@ -49,6 +50,8 @@ public class GameController {
     private Tile tileUnderUnit = null;
     private EdgeFeature pendingEdgeBuild = null;
     private boolean pendingEdgeDeconstruct = false;
+    private boolean pendingAttack = false;
+    private final CombatService combatService = new CombatService();
 
     private int currentTurn = 1;
 
@@ -201,6 +204,30 @@ public class GameController {
         selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
         buildings.remove(tileUnderUnit.getBuilding());
         tileUnderUnit.setBuilding(null);
+        EventBus.publish(new HUDChangedEvent());
+        return true;
+    }
+
+    public void startAttacking() {
+        pendingAttack = true;
+    }
+
+    public boolean isPendingAttack() {
+        return pendingAttack;
+    }
+
+    public boolean attackAdjacentStructure(int col, int row) {
+        if (selectedUnit == null || !isMilitaryUnit(selectedUnit.getType())) return false;
+        if (selectedUnit.getCurrentAP() < 1) return false;
+
+        Tile targetTile = tileGrid[col][row];
+        Building target = targetTile.getBuilding();
+        if (target == null || target.getType() == BuildingType.TOWN_HALL) return false;
+
+        combatService.attackStructure(List.of(selectedUnit), target);
+        selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
+        pendingAttack = false;
+
         EventBus.publish(new HUDChangedEvent());
         return true;
     }

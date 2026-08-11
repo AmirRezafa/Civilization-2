@@ -136,6 +136,19 @@ public class UnitActionPanel extends JPanel {
         }
     }
 
+    private void showAttackButton() {
+        JButton attackBtn = new JButton("Attack - then right-click an adjacent structure");
+        attackBtn.setFocusable(false);
+        attackBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        attackBtn.setBackground(new Color(192, 57, 43));
+        attackBtn.setForeground(Color.WHITE);
+        attackBtn.addActionListener(e -> {
+            GC.startAttacking();
+            updateActions();
+        });
+        buttonContainer.add(attackBtn);
+    }
+
     private void showEdgeBuildButtons() {
         JButton roadBtn = new JButton("Build Road (10 Wood) - then right-click a neighbor");
         roadBtn.setFocusable(false);
@@ -193,6 +206,67 @@ public class UnitActionPanel extends JPanel {
             updateActions();
         });
         buttonContainer.add(tradeBtn);
+    }
+
+    private void showTribeCampButtons(Tile currentTile) {
+        Tribe tribe = null;
+        for (Tribe t : GC.getTribes()) {
+            if (t.getCol() == currentTile.getCol() && t.getRow() == currentTile.getRow()) {
+                tribe = t;
+                break;
+            }
+        }
+        if (tribe == null) return;
+
+        JLabel infoLabel = new JLabel("Relationship: " + tribe.getRelationship() +
+                " (" + tribe.getRelationshipValue() + ") | Camp HP: " + currentTile.getBuilding().getHP());
+        infoLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        infoLabel.setForeground(Color.WHITE);
+        buttonContainer.add(infoLabel);
+
+        Tribe finalTribe = tribe;
+
+        if (currentTile.getBuilding().isDestroyed()) {
+            JButton captureBtn = new JButton("Capture Camp (turns into Outpost)");
+            captureBtn.setFocusable(false);
+            captureBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            captureBtn.setBackground(new Color(46, 204, 113));
+            captureBtn.setForeground(Color.WHITE);
+            captureBtn.addActionListener(e -> {
+                GC.captureTribeCamp(finalTribe);
+                updateActions();
+            });
+            buttonContainer.add(captureBtn);
+            return;
+        }
+
+        int giftAmount = 50;
+        JButton giftBtn = new JButton("Send Gift (" + giftAmount + " Wood)");
+        giftBtn.setFocusable(false);
+        giftBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        giftBtn.setEnabled(GC.hasEnoughWood(giftAmount));
+        giftBtn.addActionListener(e -> {
+            GC.sendGiftToTribe(finalTribe, ResourceType.WOOD, giftAmount);
+            updateActions();
+        });
+        buttonContainer.add(giftBtn);
+
+        if (tribe.getActiveQuest() == null) {
+            JButton questBtn = new JButton("Ask for a Quest");
+            questBtn.setFocusable(false);
+            questBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            questBtn.addActionListener(e -> {
+                GC.issueRoadQuestToTribe(finalTribe);
+                updateActions();
+            });
+            buttonContainer.add(questBtn);
+        } else {
+            JLabel questLabel = new JLabel("Quest: " + tribe.getActiveQuest().getDescription() +
+                    (tribe.getActiveQuest().isCompleted() ? " (Completed)" : " (In Progress)"));
+            questLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            questLabel.setForeground(Color.WHITE);
+            buttonContainer.add(questLabel);
+        }
     }
 
     private void showDeconstructButtons(Tile currentTile) {
@@ -375,6 +449,12 @@ public class UnitActionPanel extends JPanel {
                 return;
             }
 
+            if (building.getType() == BuildingType.TRIBE_CAMP) {
+                showTribeCampButtons(currentTile);
+                setVisible(true);
+                return;
+            }
+
             if(workerCount == 0 && building.getType() == BuildingType.TOWN_HALL){
                 if (building.isProducing()) {
                     showProducingMSG(building);
@@ -419,6 +499,9 @@ public class UnitActionPanel extends JPanel {
             setVisible(true);
         } else if (selectedUnit.getType() == UnitType.BORDER_EXPANDER) {
             showExpandBorderHereButton();
+            setVisible(true);
+        } else if (GC.isMilitaryUnit(selectedUnit.getType())) {
+            showAttackButton();
             setVisible(true);
         }
 
