@@ -21,6 +21,8 @@ public class GameControlPanel extends JPanel {
     private JLabel woodLabel;
     private JLabel stoneLabel;
     private JLabel ironLabel;
+    private JLabel fishLabel;
+    private JLabel happinessLabel;
     private JButton nextTurnButton;
 
 
@@ -60,6 +62,8 @@ public class GameControlPanel extends JPanel {
         woodLabel = createLabel(hudFont, textColor);
         stoneLabel = createLabel(hudFont, textColor);
         ironLabel = createLabel(hudFont, textColor);
+        fishLabel = createLabel(hudFont, textColor);
+        happinessLabel = createLabel(hudFont, textColor);
 
         nextTurnButton = new JButton("Next Turn");
         nextTurnButton.setFont(hudFont);
@@ -170,6 +174,10 @@ public class GameControlPanel extends JPanel {
         ironLabel.setText("Iron: " + economy.getNetChanges(ResourceType.IRON) + " | " +
                 economy.getResourceAmount(ResourceType.IRON) + "/" +
                 economy.getResourceCapacityAmount(ResourceType.IRON));
+        fishLabel.setText("Fish: " + economy.getNetChanges(ResourceType.FISH) + " | " +
+                economy.getResourceAmount(ResourceType.FISH) + "/" +
+                economy.getResourceCapacityAmount(ResourceType.FISH));
+        happinessLabel.setText("Happiness: " + GC.getHappinessManager().getHappiness());
 
         int explorerCounts = GC.getUnitCounts(UnitType.EXPLORER);
         int builderCounts = GC.getUnitCounts(UnitType.BUILDER);
