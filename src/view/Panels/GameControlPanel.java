@@ -75,6 +75,48 @@ public class GameControlPanel extends JPanel {
         });
 
         this.add(nextTurnButton);
+
+        JButton saveButton = new JButton("Save");
+        saveButton.setFont(hudFont);
+        saveButton.setFocusable(false);
+        saveButton.addActionListener(e -> handleSaveAction());
+        this.add(saveButton);
+
+        JButton loadButton = new JButton("Load");
+        loadButton.setFont(hudFont);
+        loadButton.setFocusable(false);
+        loadButton.addActionListener(e -> handleLoadAction());
+        this.add(loadButton);
+    }
+
+    private void handleSaveAction() {
+        Integer[] slots = {1, 2, 3};
+        Integer slot = (Integer) JOptionPane.showInputDialog(this, "Choose a save slot:",
+                "Save Game", JOptionPane.PLAIN_MESSAGE, null, slots, slots[0]);
+        if (slot == null) return;
+
+        boolean success = GC.saveGame(slot);
+        JOptionPane.showMessageDialog(this, success ? "Game saved to slot " + slot : "Save failed",
+                "Save Game", success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void handleLoadAction() {
+        Integer[] slots = {1, 2, 3};
+        Integer slot = (Integer) JOptionPane.showInputDialog(this, "Choose a save slot to load:",
+                "Load Game", JOptionPane.PLAIN_MESSAGE, null, slots, slots[0]);
+        if (slot == null) return;
+
+        boolean success = GC.loadGame(slot);
+        JOptionPane.showMessageDialog(this, success ? "Game loaded from slot " + slot : "Load failed (empty or corrupted slot)",
+                "Load Game", success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+
+        if (success) {
+            turnLabel.setText("Turn: " + GC.getCurrentTurn());
+            updateHUD();
+
+            JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            if (topFrame != null) topFrame.repaint();
+        }
     }
 
     private void handleNextTurnAction() {
