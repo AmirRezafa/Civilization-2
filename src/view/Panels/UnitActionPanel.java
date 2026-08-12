@@ -272,16 +272,10 @@ public class UnitActionPanel extends JPanel {
             buttonContainer.add(tradeBtn);
         }
 
-        int giftAmount = 50;
-        JButton giftBtn = new JButton("Send Gift (" + giftAmount + " Wood)");
-        giftBtn.setFocusable(false);
-        giftBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-        giftBtn.setEnabled(GC.hasEnoughWood(giftAmount));
-        giftBtn.addActionListener(e -> {
-            GC.sendGiftToTribe(finalTribe, ResourceType.WOOD, giftAmount);
-            updateActions();
-        });
-        buttonContainer.add(giftBtn);
+        addGiftButton(finalTribe, ResourceType.WOOD, 50);
+        addGiftButton(finalTribe, ResourceType.WHEAT, 50);
+        addGiftButton(finalTribe, ResourceType.STONE, 30);
+        addGiftButton(finalTribe, ResourceType.IRON, 30);
 
         if (tribe.getActiveQuest() == null) {
             boolean canOffer = GC.canOfferQuestToTribe(tribe);
@@ -303,6 +297,72 @@ public class UnitActionPanel extends JPanel {
             questLabel.setForeground(Color.WHITE);
             buttonContainer.add(questLabel);
         }
+
+        JButton rewardsBtn = new JButton("View Tribe Rewards");
+        rewardsBtn.setFocusable(false);
+        rewardsBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        rewardsBtn.addActionListener(e -> {
+            String info = finalTribe.getType().canTrade()
+                    ? "Trade rate: " + (int) (finalTribe.getType().getTradeRate() * 100) + "% into " +
+                    finalTribe.getType().getTradeRewardResource().name()
+                    : "This tribe type does not offer trade.";
+            JOptionPane.showMessageDialog(this, info, "Tribe Rewards", JOptionPane.INFORMATION_MESSAGE);
+        });
+        buttonContainer.add(rewardsBtn);
+
+        boolean canDeclareWar = GC.canDeclareWarOnTribe(tribe);
+        JButton declareWarBtn = new JButton("Declare War");
+        declareWarBtn.setFocusable(false);
+        declareWarBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        declareWarBtn.setBackground(new Color(192, 57, 43));
+        declareWarBtn.setForeground(Color.WHITE);
+        declareWarBtn.setEnabled(canDeclareWar);
+        declareWarBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Declaring war cannot be undone and will drop relationship to -100. Continue?",
+                    "Declare War", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                GC.declareWarOnTribe(finalTribe);
+                updateActions();
+            }
+        });
+        buttonContainer.add(declareWarBtn);
+
+        boolean canPeace = GC.canRequestPeaceWithTribe(tribe);
+        JButton peaceBtn = new JButton("Request Peace (30 Food, 30 Wood, 30 Iron)");
+        peaceBtn.setFocusable(false);
+        peaceBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        peaceBtn.setEnabled(canPeace);
+        peaceBtn.setToolTipText(canPeace ? null : "Only available while at war with this tribe");
+        peaceBtn.addActionListener(e -> {
+            GC.requestPeaceWithTribe(finalTribe);
+            updateActions();
+        });
+        buttonContainer.add(peaceBtn);
+
+        boolean canAlliance = GC.canRequestAllianceWithTribe(tribe);
+        JButton allianceBtn = new JButton("Request Alliance");
+        allianceBtn.setFocusable(false);
+        allianceBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        allianceBtn.setEnabled(canAlliance);
+        allianceBtn.setToolTipText(canAlliance ? null : "Relationship must be at least 70");
+        allianceBtn.addActionListener(e -> {
+            GC.requestAllianceWithTribe(finalTribe);
+            updateActions();
+        });
+        buttonContainer.add(allianceBtn);
+    }
+
+    private void addGiftButton(Tribe tribe, ResourceType resource, int amount) {
+        JButton giftBtn = new JButton("Send Gift (" + amount + " " + resource.name() + ")");
+        giftBtn.setFocusable(false);
+        giftBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        giftBtn.setEnabled(GC.hasEnoughResource(resource, amount));
+        giftBtn.addActionListener(e -> {
+            GC.sendGiftToTribe(tribe, resource, amount);
+            updateActions();
+        });
+        buttonContainer.add(giftBtn);
     }
 
     private void showDeconstructButtons(Tile currentTile) {
@@ -311,8 +371,14 @@ public class UnitActionPanel extends JPanel {
             deconstructBtn.setFocusable(false);
             deconstructBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
             deconstructBtn.addActionListener(e -> {
-                GC.deconstructBuilding();
-                updateActions();
+                int confirm = JOptionPane.showConfirmDialog(this,
+                        "Deconstruct " + currentTile.getBuilding().getType().getDisplayName() +
+                                "? This cannot be undone.",
+                        "Confirm Deconstruction", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    GC.deconstructBuilding();
+                    updateActions();
+                }
             });
             buttonContainer.add(deconstructBtn);
         }

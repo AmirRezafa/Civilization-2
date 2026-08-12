@@ -19,6 +19,7 @@ public class Building implements java.io.Serializable {
     private TownHallLevel townHallLevel;
     private int hp;
     private int maxHP;
+    private int disabledUntilTurn = 0;
 
 
     public Building(BuildingType type, int col, int row) {
@@ -161,5 +162,13 @@ public class Building implements java.io.Serializable {
 
     public boolean isDestroyed() {
         return hp <= 0;
+    }
+
+    public int getDisabledUntilTurn() {
+        return disabledUntilTurn;
+    }
+
+    public void setDisabledUntilTurn(int turn) {
+        this.disabledUntilTurn = turn;
     }
 }

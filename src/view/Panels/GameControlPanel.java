@@ -1,6 +1,7 @@
 package view.Panels;
 
 import controller.GameController;
+import controller.events.DisasterEvent;
 import controller.events.EventBus;
 import controller.events.HUDChangedEvent;
 import controller.events.StarvationEvent;
@@ -37,6 +38,12 @@ public class GameControlPanel extends JPanel {
 
         EventBus.subscribe(HUDChangedEvent.class, e -> updateHUD());
         EventBus.subscribe(StarvationEvent.class, e -> showStarvationAlert());
+        EventBus.subscribe(DisasterEvent.class, this::showDisasterAlert);
+    }
+
+    private void showDisasterAlert(DisasterEvent event) {
+        JOptionPane.showMessageDialog(this, event.getMessage(), "Natural Disaster: " + event.getType(),
+                JOptionPane.WARNING_MESSAGE);
     }
 
     private JLabel createLabel(Font hudFont, Color textColor){

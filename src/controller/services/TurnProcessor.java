@@ -21,6 +21,8 @@ public class TurnProcessor {
         Building building = tile.getBuilding();
         BuildingType type = building.getType();
 
+        if (gc.getCurrentTurn() <= building.getDisabledUntilTurn()) return;
+
         boolean spended = true;
         if(!economy.spendResource(ResourceType.WOOD, type.getWoodCost() / 10)) spended = false;
         if(!economy.spendResource(ResourceType.STONE, type.getStoneCost() / 10)) spended = false;
@@ -100,10 +102,8 @@ public class TurnProcessor {
         gc.incrementTurn();
         gc.resetTradeTurn();
 
-        DisasterType disaster = gc.rollForDisaster();
-        if (disaster != null) {
-            System.out.println("A disaster struck: " + disaster);
-        }
+        gc.rollForDisaster();
+
         for(Tile tile: gc.getTiles()){
             Building building = tile.getBuilding();
             if(building != null){

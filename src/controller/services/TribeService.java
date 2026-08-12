@@ -3,6 +3,7 @@ package controller.services;
 import model.Building;
 import model.BuildingType;
 import model.EdgeFeature;
+import model.GlobalHappinessManager;
 import model.GlobalResourceManager;
 import model.HexEdge;
 import model.HexUtils;
@@ -48,13 +49,76 @@ public class TribeService {
         tribesTradedThisTurn.clear();
     }
 
-    public void sendGift(Tribe tribe, int resourceAmount) {
-        int relationshipBoost = resourceAmount / 10;
+    public void sendGift(Tribe tribe, ResourceType resource, int resourceAmount) {
+        int perTen = (resource == ResourceType.STONE || resource == ResourceType.IRON) ? 3 : 2;
+        int relationshipBoost = (resourceAmount / 10) * perTen;
         tribe.changeRelationship(relationshipBoost);
     }
 
     public void recordWar(Tribe tribe) {
-        tribe.changeRelationship(-50);
+        tribe.setRelationshipValue(-100);
+    }
+
+    /** Any attack (guard combat or structure damage) immediately sets a tribe to Enemy. */
+    public void recordAttack(Tribe tribe, GlobalHappinessManager happiness) {
+        TribeRelationship priorRelationship = tribe.getRelationship();
+        if (priorRelationship == TribeRelationship.ALLIED) {
+            happiness.addHappiness(-15);
+        } else if (priorRelationship == TribeRelationship.FRIENDLY) {
+            happiness.addHappiness(-5);
+        }
+
+        tribe.setRelationshipValue(-100);
+        tribe.setActiveQuest(null);
+        tribesTradedThisTurn.remove(tribe);
+    }
+
+    public boolean canRequestPeace(Tribe tribe) {
+        return tribe.getRelationship() == TribeRelationship.ENEMY;
+    }
+
+    public boolean requestPeace(Tribe tribe, GlobalResourceManager economy) {
+        if (!canRequestPeace(tribe)) return false;
+        if (!economy.hasEnough(ResourceType.WHEAT, 30) || !economy.hasEnough(ResourceType.WOOD, 30) ||
+                !economy.hasEnough(ResourceType.IRON, 30)) {
+            return false;
+        }
+
+        economy.spendResource(ResourceType.WHEAT, 30);
+        economy.spendResource(ResourceType.WOOD, 30);
+        economy.spendResource(ResourceType.IRON, 30);
+        tribe.setRelationshipValue(-10);
+        return true;
+    }
+
+    public boolean canRequestAlliance(Tribe tribe) {
+        return tribe.getRelationshipValue() >= 70;
+    }
+
+    public boolean requestAlliance(Tribe tribe) {
+        if (!canRequestAlliance(tribe)) return false;
+        tribe.changeRelationship(5);
+        return true;
+    }
+
+    public void awardCaptureLoot(Tribe tribe, GlobalResourceManager economy) {
+        switch (tribe.getType()) {
+            case FARMER -> economy.addResource(ResourceType.WHEAT, 40);
+            case MOUNTAIN -> economy.addResource(ResourceType.STONE, 40);
+            case COASTAL -> {
+                economy.addResource(ResourceType.WHEAT, 30);
+                economy.addResource(ResourceType.WOOD, 20);
+            }
+            case WARRIOR -> {
+                economy.addResource(ResourceType.WOOD, 20);
+                economy.addResource(ResourceType.STONE, 20);
+                economy.addResource(ResourceType.IRON, 20);
+            }
+            case TRADER -> {
+                economy.addResource(ResourceType.WOOD, 20);
+                economy.addResource(ResourceType.STONE, 20);
+            }
+        }
     }
 
     public boolean canOfferQuest(Tribe tribe, int currentTurn) {

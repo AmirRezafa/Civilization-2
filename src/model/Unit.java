@@ -127,6 +127,10 @@ public class Unit implements java.io.Serializable {
         hp--;
     }
 
+    public void takeDamage(int amount) {
+        hp = Math.max(0, hp - amount);
+    }
+
     public boolean isDead() {
         return hp <= 0;
     }

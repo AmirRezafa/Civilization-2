@@ -34,6 +34,10 @@ public class Tribe implements java.io.Serializable {
         relationshipValue = Math.max(-100, Math.min(100, relationshipValue + delta));
     }
 
+    public void setRelationshipValue(int value) {
+        relationshipValue = Math.max(-100, Math.min(100, value));
+    }
+
     public TribeRelationship getRelationship() {
         return TribeRelationship.fromValue(relationshipValue);
     }

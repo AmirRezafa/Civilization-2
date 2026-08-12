@@ -184,6 +184,29 @@ public class GameController {
         return wallHP.getOrDefault(new HexEdge(col1, row1, col2, row2), 0);
     }
 
+    public void destroyRoadsTouching(int col, int row) {
+        List<HexEdge> toRemove = new ArrayList<>();
+        for (Map.Entry<HexEdge, EdgeFeature> entry : edgeFeatures.entrySet()) {
+            if (entry.getValue() != EdgeFeature.ROAD) continue;
+            HexEdge edge = entry.getKey();
+            if (touchesHex(edge, col, row)) toRemove.add(edge);
+        }
+        for (HexEdge edge : toRemove) edgeFeatures.remove(edge);
+    }
+
+    public boolean hasRiverEdgeTouching(int col, int row) {
+        for (Map.Entry<HexEdge, EdgeFeature> entry : edgeFeatures.entrySet()) {
+            if (entry.getValue() != EdgeFeature.RIVER) continue;
+            if (touchesHex(entry.getKey(), col, row)) return true;
+        }
+        return false;
+    }
+
+    private boolean touchesHex(HexEdge edge, int col, int row) {
+        return (edge.getCol1() == col && edge.getRow1() == row) ||
+                (edge.getCol2() == col && edge.getRow2() == row);
+    }
+
     public void startDeconstructingEdge() {
         pendingEdgeDeconstruct = true;
     }
@@ -250,6 +273,9 @@ public class GameController {
         }
 
         Tribe defendingTribe = getTribeAt(col, row);
+        if (defendingTribe != null) {
+            tribeService.recordAttack(defendingTribe, happinessManager);
+        }
         if (defendingTribe != null && defendingTribe.getGuardUnitCount() > 0) {
             List<Unit> defenders = new ArrayList<>();
             for (int i = 0; i < defendingTribe.getGuardUnitCount(); i++) {
@@ -359,7 +385,7 @@ public class GameController {
         if (!economy.hasEnough(resource, amount)) return false;
 
         economy.spendResource(resource, amount);
-        tribeService.sendGift(tribe, amount);
+        tribeService.sendGift(tribe, resource, amount);
         EventBus.publish(new HUDChangedEvent());
         return true;
     }
@@ -375,11 +401,40 @@ public class GameController {
         buildings.add(outpost);
         tile.setBuilding(outpost);
 
-        economy.addResource(ResourceType.WOOD, 50);
+        tribeService.awardCaptureLoot(tribe, economy);
         tribeService.recordWar(tribe);
 
         EventBus.publish(new HUDChangedEvent());
         return true;
+    }
+
+    public boolean canDeclareWarOnTribe(Tribe tribe) {
+        return tribe.getRelationship() != TribeRelationship.ENEMY;
+    }
+
+    public void declareWarOnTribe(Tribe tribe) {
+        tribeService.recordAttack(tribe, happinessManager);
+        EventBus.publish(new HUDChangedEvent());
+    }
+
+    public boolean canRequestPeaceWithTribe(Tribe tribe) {
+        return tribeService.canRequestPeace(tribe);
+    }
+
+    public boolean requestPeaceWithTribe(Tribe tribe) {
+        boolean success = tribeService.requestPeace(tribe, economy);
+        if (success) EventBus.publish(new HUDChangedEvent());
+        return success;
+    }
+
+    public boolean canRequestAllianceWithTribe(Tribe tribe) {
+        return tribeService.canRequestAlliance(tribe);
+    }
+
+    public boolean requestAllianceWithTribe(Tribe tribe) {
+        boolean success = tribeService.requestAlliance(tribe);
+        if (success) EventBus.publish(new HUDChangedEvent());
+        return success;
     }
 
     public Season getCurrentSeason() {
