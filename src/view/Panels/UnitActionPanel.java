@@ -230,8 +230,10 @@ public class UnitActionPanel extends JPanel {
         }
         if (tribe == null) return;
 
-        JLabel infoLabel = new JLabel("Relationship: " + tribe.getRelationship() +
-                " (" + tribe.getRelationshipValue() + ") | Camp HP: " + currentTile.getBuilding().getHP());
+        JLabel infoLabel = new JLabel("Type: " + tribe.getType().getDisplayName() +
+                " | Relationship: " + tribe.getRelationship() +
+                " (" + tribe.getRelationshipValue() + ") | Camp HP: " + currentTile.getBuilding().getHP() +
+                " | Guards: " + tribe.getGuardUnitCount());
         infoLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
         infoLabel.setForeground(Color.WHITE);
         buttonContainer.add(infoLabel);
@@ -252,6 +254,24 @@ public class UnitActionPanel extends JPanel {
             return;
         }
 
+        if (tribe.getType().canTrade()) {
+            int sellAmount = 20;
+            boolean canTrade = GC.canTradeWithTribe(tribe);
+            JButton tradeBtn = new JButton("Trade " + sellAmount + " Wood -> " +
+                    (int) (sellAmount * tribe.getType().getTradeRate()) + " " +
+                    tribe.getType().getTradeRewardResource().name());
+            tradeBtn.setFocusable(false);
+            tradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            tradeBtn.setEnabled(canTrade && GC.hasEnoughWood(sellAmount));
+            tradeBtn.setToolTipText(canTrade ? null :
+                    "Requires Friendly/Allied relationship (>= 20) and one trade per turn");
+            tradeBtn.addActionListener(e -> {
+                GC.tradeWithTribe(finalTribe, ResourceType.WOOD, sellAmount);
+                updateActions();
+            });
+            buttonContainer.add(tradeBtn);
+        }
+
         int giftAmount = 50;
         JButton giftBtn = new JButton("Send Gift (" + giftAmount + " Wood)");
         giftBtn.setFocusable(false);
@@ -264,16 +284,20 @@ public class UnitActionPanel extends JPanel {
         buttonContainer.add(giftBtn);
 
         if (tribe.getActiveQuest() == null) {
+            boolean canOffer = GC.canOfferQuestToTribe(tribe);
             JButton questBtn = new JButton("Ask for a Quest");
             questBtn.setFocusable(false);
             questBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            questBtn.setEnabled(canOffer);
+            questBtn.setToolTipText(canOffer ? null : "This tribe needs more time before offering a new quest");
             questBtn.addActionListener(e -> {
-                GC.issueRoadQuestToTribe(finalTribe);
+                GC.issueQuestToTribe(finalTribe);
                 updateActions();
             });
             buttonContainer.add(questBtn);
         } else {
             JLabel questLabel = new JLabel("Quest: " + tribe.getActiveQuest().getDescription() +
+                    " | Deadline: Turn " + tribe.getActiveQuest().getDeadlineTurn() +
                     (tribe.getActiveQuest().isCompleted() ? " (Completed)" : " (In Progress)"));
             questLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
             questLabel.setForeground(Color.WHITE);

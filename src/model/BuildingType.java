@@ -88,7 +88,9 @@ public enum BuildingType {
     TRIBE_CAMP("Tribe Camp", null, ResourceType.NONE,
             0, 0, 0, 0, 0, 0, false, 1),
     OUTPOST("Outpost", null, ResourceType.NONE,
-            0, 0, 0, 0, 0, 2, false, 1);
+            0, 0, 0, 0, 0, 2, false, 1),
+    MONUMENT("Monument", TerrainType.PLAIN, ResourceType.NONE,
+            30, 30, 0, 0, 2, 0, true, 1);
 
     private final String displayName;
     private final TerrainType requiredTerrain;

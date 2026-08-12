@@ -6,11 +6,16 @@ import java.util.List;
 import java.util.Map;
 
 public class GameState implements Serializable {
+    public static final int CURRENT_SAVE_VERSION = 1;
+
+    public int saveVersion = CURRENT_SAVE_VERSION;
+    public long savedAtMillis;
     public ArrayList<Tile> tiles;
     public Tile[][] tileGrid;
     public ArrayList<Unit> units;
     public ArrayList<Building> buildings;
     public Map<HexEdge, EdgeFeature> edgeFeatures;
+    public Map<HexEdge, Integer> wallHP;
     public GlobalResourceManager economy;
     public GlobalHappinessManager happinessManager;
     public List<Tribe> tribes;

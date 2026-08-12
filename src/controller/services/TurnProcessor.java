@@ -110,6 +110,17 @@ public class TurnProcessor {
                 processTurnProduction(tile, gc.getEconomy());
             }
         }
+        gc.processWallUpkeep();
+
+        GlobalHappinessManager happinessForAmenities = gc.getHappinessManager();
+        for (Building building : gc.getBuildings()) {
+            if (building.getType() == BuildingType.MONUMENT && !building.isDestroyed()) {
+                happinessForAmenities.addHappiness(2);
+            }
+        }
+        if (gc.hasMilitaryUnitInTownHall()) {
+            happinessForAmenities.addHappiness(1);
+        }
         boolean isStarvation = false;
         boolean isRiot = gc.getHappinessManager().isRiot();
         for(Unit unit: gc.getUnits()){
@@ -144,6 +155,18 @@ public class TurnProcessor {
         }
 
         gc.checkTribeQuests();
+        processTribeGuardProduction();
         gc.autosave();
+    }
+
+    private void processTribeGuardProduction() {
+        if (gc.getCurrentTurn() % 3 != 0) return;
+
+        for (Tribe tribe : gc.getTribes()) {
+            if (tribe.getRelationship() != TribeRelationship.ENEMY) continue;
+            if (tribe.getGuardUnitCount() >= tribe.getGuardUnitCap()) continue;
+
+            tribe.setGuardUnitCount(tribe.getGuardUnitCount() + 1);
+        }
     }
 }

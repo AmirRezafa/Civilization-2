@@ -94,6 +94,13 @@ public class GameControlPanel extends JPanel {
     }
 
     private void handleSaveAction() {
+        if (!GC.isSaveAllowed()) {
+            JOptionPane.showMessageDialog(this,
+                    "Finish or cancel your pending action (attack/build/deconstruct) before saving.",
+                    "Save Unavailable", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         Integer[] slots = {1, 2, 3};
         Integer slot = (Integer) JOptionPane.showInputDialog(this, "Choose a save slot:",
                 "Save Game", JOptionPane.PLAIN_MESSAGE, null, slots, slots[0]);

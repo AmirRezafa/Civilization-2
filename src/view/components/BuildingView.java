@@ -65,6 +65,10 @@ public class BuildingView {
                 bgColor = new Color(39, 174, 96);
                 label = "O";
                 break;
+            case MONUMENT:
+                bgColor = new Color(155, 89, 182);
+                label = "MN";
+                break;
             default:
                 bgColor = Color.WHITE;
                 label = "?";

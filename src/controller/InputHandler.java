@@ -114,16 +114,15 @@ public class InputHandler extends MouseAdapter {
                     EdgeFeature edge = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
                             clickedTile.getCol(), clickedTile.getRow());
 
+                    Season season = gc.getCurrentSeason();
                     int movementCost;
                     if (targetTerrain == TerrainType.SEA) {
-                        movementCost = selectedUnit.getCurrentAP();
+                        movementCost = targetTerrain.getMovementCost() + season.getWaterMovementPenalty();
                     } else if (edge == EdgeFeature.ROAD) {
                         movementCost = 1;
                     } else {
                         movementCost = targetTerrain.getMovementCost();
                         if (edge == EdgeFeature.RIVER) movementCost += 2;
-
-                        Season season = gc.getCurrentSeason();
                         movementCost += season.getLandMovementPenalty();
                     }
 

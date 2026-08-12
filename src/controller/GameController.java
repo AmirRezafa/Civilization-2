@@ -43,6 +43,9 @@ public class GameController {
     private ArrayList<Unit> units = new ArrayList<>();
     private ArrayList<Building> buildings = new ArrayList<>();
     private Map<HexEdge, EdgeFeature> edgeFeatures;
+    private Map<HexEdge, Integer> wallHP = new HashMap<>();
+    private Map<HexEdge, Integer> wallFailedUpkeep = new HashMap<>();
+    private static final int WALL_MAX_HP = 100;
 
     private GlobalResourceManager economy;
 
@@ -169,10 +172,16 @@ public class GameController {
         economy.spendResource(ResourceType.STONE, stoneCost);
         selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - apCost);
 
-        edgeFeatures.put(new HexEdge(col1, row1, col2, row2), feature);
+        HexEdge edge = new HexEdge(col1, row1, col2, row2);
+        edgeFeatures.put(edge, feature);
+        if (feature == EdgeFeature.WALL) wallHP.put(edge, WALL_MAX_HP);
         pendingEdgeBuild = null;
         EventBus.publish(new HUDChangedEvent());
         return true;
+    }
+
+    public int getWallHP(int col1, int row1, int col2, int row2) {
+        return wallHP.getOrDefault(new HexEdge(col1, row1, col2, row2), 0);
     }
 
     public void startDeconstructingEdge() {
@@ -189,7 +198,10 @@ public class GameController {
         if (selectedUnit == null || selectedUnit.getCurrentAP() < 1) return false;
 
         selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
-        edgeFeatures.remove(new HexEdge(col1, row1, col2, row2));
+        HexEdge edge = new HexEdge(col1, row1, col2, row2);
+        edgeFeatures.remove(edge);
+        wallHP.remove(edge);
+        wallFailedUpkeep.remove(edge);
         pendingEdgeDeconstruct = false;
         EventBus.publish(new HUDChangedEvent());
         return true;
@@ -220,6 +232,49 @@ public class GameController {
         if (selectedUnit == null || !isMilitaryUnit(selectedUnit.getType())) return false;
         if (selectedUnit.getCurrentAP() < 1) return false;
 
+        HexEdge edge = new HexEdge(selectedUnit.getCol(), selectedUnit.getRow(), col, row);
+        if (edgeFeatures.getOrDefault(edge, EdgeFeature.NONE) == EdgeFeature.WALL) {
+            int damage = combatService.calculateStructureDamage(List.of(selectedUnit));
+            int remaining = wallHP.getOrDefault(edge, WALL_MAX_HP) - damage;
+            if (remaining <= 0) {
+                edgeFeatures.remove(edge);
+                wallHP.remove(edge);
+                wallFailedUpkeep.remove(edge);
+            } else {
+                wallHP.put(edge, remaining);
+            }
+            selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
+            pendingAttack = false;
+            EventBus.publish(new HUDChangedEvent());
+            return true;
+        }
+
+        Tribe defendingTribe = getTribeAt(col, row);
+        if (defendingTribe != null && defendingTribe.getGuardUnitCount() > 0) {
+            List<Unit> defenders = new ArrayList<>();
+            for (int i = 0; i < defendingTribe.getGuardUnitCount(); i++) {
+                defenders.add(new Unit(UnitType.SWORDSMAN, col, row));
+            }
+            combatService.resolveCombat(List.of(selectedUnit), defenders, false);
+
+            int survivors = 0;
+            for (Unit d : defenders) if (!d.isDead()) survivors++;
+            int defeatedCount = defenders.size() - survivors;
+            defendingTribe.setGuardUnitCount(survivors);
+            recordDefeatsForNearbyQuests(col, row, defeatedCount);
+
+            selectedUnit.setCurrentAP(selectedUnit.getCurrentAP() - 1);
+            pendingAttack = false;
+
+            if (selectedUnit.isDead()) {
+                deleteUnit(selectedUnit);
+                selectedUnit = null;
+            }
+
+            EventBus.publish(new HUDChangedEvent());
+            return true;
+        }
+
         Tile targetTile = tileGrid[col][row];
         Building target = targetTile.getBuilding();
         if (target == null || target.getType() == BuildingType.TOWN_HALL) return false;
@@ -230,6 +285,25 @@ public class GameController {
 
         EventBus.publish(new HUDChangedEvent());
         return true;
+    }
+
+    private void recordDefeatsForNearbyQuests(int col, int row, int defeatedCount) {
+        if (defeatedCount <= 0) return;
+
+        for (Tribe tribe : tribes) {
+            Quest quest = tribe.getActiveQuest();
+            if (quest == null || quest.isCompleted() || quest.getType() != QuestType.WARRIOR_DEFEAT) continue;
+            if (!tribeService.hexDistanceWithin(tribe.getCol(), tribe.getRow(), col, row, Tiles, 5)) continue;
+
+            for (int i = 0; i < defeatedCount; i++) quest.recordDefeat();
+        }
+    }
+
+    private Tribe getTribeAt(int col, int row) {
+        for (Tribe t : tribes) {
+            if (t.getCol() == col && t.getRow() == row) return t;
+        }
+        return null;
     }
 
     public Tile getTownhall() {
@@ -312,16 +386,25 @@ public class GameController {
         return Season.fromTurn(currentTurn);
     }
 
-    public void issueRoadQuestToTribe(Tribe tribe) {
-        tribeService.issueRoadQuest(tribe);
+    public boolean canOfferQuestToTribe(Tribe tribe) {
+        return tribeService.canOfferQuest(tribe, currentTurn);
+    }
+
+    public void issueQuestToTribe(Tribe tribe) {
+        tribeService.issueQuest(tribe, currentTurn);
         EventBus.publish(new HUDChangedEvent());
     }
 
     public void checkTribeQuests() {
         for (Tribe tribe : tribes) {
             Quest quest = tribe.getActiveQuest();
-            if (quest != null && !quest.isCompleted() && tribeService.isRoadQuestSatisfied(tribe, edgeFeatures)) {
-                tribeService.completeQuest(tribe);
+            if (quest == null || quest.isCompleted()) continue;
+
+            if (tribeService.isQuestSatisfied(tribe, quest, economy, edgeFeatures, buildings, Tiles)) {
+                tribeService.completeQuest(tribe, quest, economy);
+                EventBus.publish(new HUDChangedEvent());
+            } else if (quest.isExpired(currentTurn)) {
+                tribeService.expireQuest(tribe, currentTurn);
                 EventBus.publish(new HUDChangedEvent());
             }
         }
@@ -343,11 +426,13 @@ public class GameController {
 
     public GameState captureState() {
         GameState state = new GameState();
+        state.savedAtMillis = System.currentTimeMillis();
         state.tiles = Tiles;
         state.tileGrid = tileGrid;
         state.units = units;
         state.buildings = buildings;
         state.edgeFeatures = edgeFeatures;
+        state.wallHP = wallHP;
         state.economy = economy;
         state.happinessManager = happinessManager;
         state.tribes = tribes;
@@ -364,6 +449,8 @@ public class GameController {
         this.units = state.units;
         this.buildings = state.buildings;
         this.edgeFeatures = state.edgeFeatures;
+        this.wallHP = state.wallHP != null ? state.wallHP : new HashMap<>();
+        this.wallFailedUpkeep = new HashMap<>();
         this.economy = state.economy;
         this.happinessManager = state.happinessManager;
         this.tribes = state.tribes;
@@ -383,7 +470,12 @@ public class GameController {
         EventBus.publish(new UnitActionsChangedEvent());
     }
 
+    public boolean isSaveAllowed() {
+        return !pendingAttack && pendingEdgeBuild == null && !pendingEdgeDeconstruct;
+    }
+
     public boolean saveGame(int slot) {
+        if (!isSaveAllowed()) return false;
         return saveLoadService.save(this, slot);
     }
 
@@ -510,6 +602,38 @@ public class GameController {
         return type == UnitType.SWORDSMAN || type == UnitType.ARCHER || type == UnitType.CAVALRY;
     }
 
+    public boolean hasMilitaryUnitInTownHall() {
+        for (Unit u : units) {
+            if (isMilitaryUnit(u.getType()) && u.getCol() == Townhall.getCol() && u.getRow() == Townhall.getRow()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void processWallUpkeep() {
+        List<HexEdge> toRemove = new ArrayList<>();
+        for (Map.Entry<HexEdge, EdgeFeature> entry : edgeFeatures.entrySet()) {
+            if (entry.getValue() != EdgeFeature.WALL) continue;
+            HexEdge edge = entry.getKey();
+            if (economy.spendResource(ResourceType.STONE, 1)) {
+                wallFailedUpkeep.remove(edge);
+            } else {
+                int fails = wallFailedUpkeep.getOrDefault(edge, 0) + 1;
+                if (fails >= 3) {
+                    toRemove.add(edge);
+                } else {
+                    wallFailedUpkeep.put(edge, fails);
+                }
+            }
+        }
+        for (HexEdge edge : toRemove) {
+            edgeFeatures.remove(edge);
+            wallHP.remove(edge);
+            wallFailedUpkeep.remove(edge);
+        }
+    }
+
     public boolean hasStable() {
         for (Building b : buildings) {
             if (b.getType() == BuildingType.STABLE) return true;
@@ -550,6 +674,17 @@ public class GameController {
 
     public void resetTradeTurn() {
         tradeService.resetTurn();
+        tribeService.resetTradeTurn();
+    }
+
+    public boolean canTradeWithTribe(Tribe tribe) {
+        return tribeService.canTradeWith(tribe);
+    }
+
+    public boolean tradeWithTribe(Tribe tribe, ResourceType sellResource, int sellAmount) {
+        boolean success = tribeService.tradeWithTribe(tribe, economy, sellResource, sellAmount);
+        if (success) EventBus.publish(new HUDChangedEvent());
+        return success;
     }
 
 

@@ -1,15 +1,22 @@
 package model;
 
 public class Quest implements java.io.Serializable {
-    private final String description;
+    private final QuestType type;
+    private final int deadlineTurn;
     private boolean completed = false;
+    private int defeatsRecorded = 0;
 
-    public Quest(String description) {
-        this.description = description;
+    public Quest(QuestType type, int issuedTurn) {
+        this.type = type;
+        this.deadlineTurn = issuedTurn + type.getDeadlineTurns();
+    }
+
+    public QuestType getType() {
+        return type;
     }
 
     public String getDescription() {
-        return description;
+        return type.getDisplayName();
     }
 
     public boolean isCompleted() {
@@ -18,5 +25,21 @@ public class Quest implements java.io.Serializable {
 
     public void markCompleted() {
         completed = true;
+    }
+
+    public int getDeadlineTurn() {
+        return deadlineTurn;
+    }
+
+    public boolean isExpired(int currentTurn) {
+        return !completed && currentTurn > deadlineTurn;
+    }
+
+    public void recordDefeat() {
+        defeatsRecorded++;
+    }
+
+    public int getDefeatsRecorded() {
+        return defeatsRecorded;
     }
 }

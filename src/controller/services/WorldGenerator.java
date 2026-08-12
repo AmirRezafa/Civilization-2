@@ -171,7 +171,9 @@ public class WorldGenerator {
 
             Building camp = new Building(BuildingType.TRIBE_CAMP, candidate.getCol(), candidate.getRow());
             candidate.setBuilding(camp);
-            tribes.add(new Tribe(candidate.getCol(), candidate.getRow()));
+            TribeType[] types = TribeType.values();
+            TribeType type = types[random.nextInt(types.length)];
+            tribes.add(new Tribe(candidate.getCol(), candidate.getRow(), type));
             placed++;
         }
 
