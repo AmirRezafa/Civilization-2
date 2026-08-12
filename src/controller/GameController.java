@@ -472,6 +472,11 @@ public class GameController {
         }
     }
 
+    public void cancelTownHallProduction() {
+        Townhall.getBuilding().clearProduction();
+        EventBus.publish(new HUDChangedEvent());
+    }
+
     public boolean checkUnitCap(){
         return (units.size() < unitCapacity);
     }

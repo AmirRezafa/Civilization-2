@@ -52,7 +52,7 @@ public enum BuildingType {
         }
     },
     DOCK("Dock", null, ResourceType.FISH,
-            30, 0, 0, 2, 2, 0, true, 1) {
+            30, 0, 0, 2, 2, 0, true, 2) {
         @Override
         public boolean isBuildableAt(Tile tile, List<Tile> allTiles) {
             if (!tile.getTerrain().isPassable() || tile.getTerrain() == TerrainType.SEA) return false;

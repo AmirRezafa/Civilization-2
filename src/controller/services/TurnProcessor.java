@@ -42,6 +42,10 @@ public class TurnProcessor {
             ratePerWorker = Math.max(0, ratePerWorker - 1);
         }
 
+        if ((type == BuildingType.STONE_MINE || type == BuildingType.IRON_MINE) && gc.hasTech(TechType.STEEL_TOOLS)) {
+            ratePerWorker = (int)(ratePerWorker * 1.5);
+        }
+
         type.produceResources(building, tile, economy, ratePerWorker, gc.getTiles());
         applyAdjacencyBonus(building, tile, economy, gc.getTiles());
         applySeasonalBonus(type, economy);

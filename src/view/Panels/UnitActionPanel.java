@@ -67,6 +67,17 @@ public class UnitActionPanel extends JPanel {
         producingLabel.setForeground(new Color(241, 196, 15));
 
         buttonContainer.add(producingLabel);
+
+        JButton cancelBtn = new JButton("Cancel (no refund)");
+        cancelBtn.setFocusable(false);
+        cancelBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        cancelBtn.setBackground(new Color(149, 165, 166));
+        cancelBtn.setForeground(Color.WHITE);
+        cancelBtn.addActionListener(e -> {
+            GC.cancelTownHallProduction();
+            updateActions();
+        });
+        buttonContainer.add(cancelBtn);
     }
 
     public void showProduceButtons(){
@@ -82,7 +93,8 @@ public class UnitActionPanel extends JPanel {
                     GC.checkUnitCap();
             boolean militaryCapOk = !GC.isMilitaryUnit(uType) || GC.checkMilitaryUnitCap();
             boolean stableOk = uType != UnitType.CAVALRY || GC.hasStable();
-            trainBtn.setEnabled(canAfford && militaryCapOk && stableOk);
+            boolean archerLevelOk = uType != UnitType.ARCHER || GC.getTownHallLevel().getLevelNumber() >= 2;
+            trainBtn.setEnabled(canAfford && militaryCapOk && stableOk && archerLevelOk);
 
             trainBtn.addActionListener(e -> {
                 GC.startProducingUnitInTownHall(uType);
