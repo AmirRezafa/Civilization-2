@@ -29,6 +29,18 @@ public class HexUtils {
         return false;
     }
 
+    public static boolean isDistanceTwo(int col1, int row1, int col2, int row2, List<Tile> allTiles) {
+        if (isNeighbor(col1, row1, col2, row2)) return false;
+
+        for (Tile mid : allTiles) {
+            if (isNeighbor(col1, row1, mid.getCol(), mid.getRow()) &&
+                    isNeighbor(mid.getCol(), mid.getRow(), col2, row2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<Tile> hexesWithinRadius(int centerCol, int centerRow, int radius, List<Tile> allTiles) {
         List<Tile> result = new ArrayList<>();
         Set<Long> visited = new HashSet<>();

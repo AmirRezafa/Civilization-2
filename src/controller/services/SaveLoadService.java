@@ -19,6 +19,7 @@ public class SaveLoadService {
 
     public boolean save(GameController gc, int slot) {
         GameState state = gc.captureState();
+        PersistedServices services = gc.captureServices();
 
         File dir = new File(SAVE_DIR);
         if (!dir.exists()) dir.mkdirs();
@@ -28,6 +29,7 @@ public class SaveLoadService {
 
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(tempFile))) {
             out.writeObject(state);
+            out.writeObject(services);
         } catch (IOException e) {
             e.printStackTrace();
             tempFile.delete();
@@ -54,7 +56,9 @@ public class SaveLoadService {
                 System.out.println("Save file is from a newer, unsupported version: " + state.saveVersion);
                 return false;
             }
+            PersistedServices services = (PersistedServices) in.readObject();
             gc.restoreState(state);
+            gc.restoreServices(services);
             return true;
         } catch (InvalidClassException e) {
             System.out.println("Save file is incompatible with the current game version.");
@@ -67,6 +71,27 @@ public class SaveLoadService {
 
     public void autosave(GameController gc) {
         save(gc, AUTOSAVE_SLOT);
+    }
+
+    public String peekSummary(int slot) {
+        File file = new File(slotFile(slot));
+        if (!file.exists()) return "Empty";
+
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(file))) {
+            GameState state = (GameState) in.readObject();
+            String time = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(state.savedAtMillis));
+
+            int thLevel = 1;
+            for (model.Building b : state.buildings) {
+                if (b.getType() == model.BuildingType.TOWN_HALL) {
+                    thLevel = b.getTownHallLevel().getLevelNumber();
+                    break;
+                }
+            }
+            return "Turn " + state.currentTurn + " | Town Hall Lv" + thLevel + " | Saved " + time;
+        } catch (Exception e) {
+            return "Corrupted or unreadable";
+        }
     }
 
     private String slotFile(int slot) {

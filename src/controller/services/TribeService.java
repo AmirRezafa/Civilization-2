@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
-public class TribeService {
+public class TribeService implements java.io.Serializable {
     private final Set<Tribe> tribesTradedThisTurn = new HashSet<>();
 
     public boolean canTradeWith(Tribe tribe) {

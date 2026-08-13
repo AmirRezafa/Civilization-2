@@ -87,20 +87,55 @@ public class GameControlPanel extends JPanel {
 
         this.add(nextTurnButton);
 
-        JButton saveButton = new JButton("Save");
-        saveButton.setFont(hudFont);
-        saveButton.setFocusable(false);
-        saveButton.addActionListener(e -> handleSaveAction());
-        this.add(saveButton);
-
-        JButton loadButton = new JButton("Load");
-        loadButton.setFont(hudFont);
-        loadButton.setFocusable(false);
-        loadButton.addActionListener(e -> handleLoadAction());
-        this.add(loadButton);
+        JButton pauseButton = new JButton("Pause");
+        pauseButton.setFont(hudFont);
+        pauseButton.setFocusable(false);
+        pauseButton.addActionListener(e -> showPauseMenu());
+        this.add(pauseButton);
     }
 
-    private void handleSaveAction() {
+    private void showPauseMenu() {
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(topFrame, "Paused", true);
+        dialog.setLayout(new BoxLayout(dialog.getContentPane(), BoxLayout.Y_AXIS));
+
+        for (int slot = 1; slot <= 3; slot++) {
+            dialog.add(buildSlotRow(dialog, slot));
+        }
+
+        JButton resumeButton = new JButton("Resume");
+        resumeButton.setFocusable(false);
+        resumeButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        resumeButton.addActionListener(e -> dialog.dispose());
+        dialog.add(resumeButton);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private JPanel buildSlotRow(JDialog dialog, int slot) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel summaryLabel = new JLabel("Slot " + slot + ": " + GC.peekSaveSummary(slot));
+        row.add(summaryLabel);
+
+        JButton saveBtn = new JButton("Save");
+        saveBtn.setFocusable(false);
+        saveBtn.addActionListener(e -> handleSaveAction(slot, summaryLabel));
+        row.add(saveBtn);
+
+        JButton loadBtn = new JButton("Load");
+        loadBtn.setFocusable(false);
+        loadBtn.addActionListener(e -> {
+            handleLoadAction(slot);
+            dialog.dispose();
+        });
+        row.add(loadBtn);
+
+        return row;
+    }
+
+    private void handleSaveAction(int slot, JLabel summaryLabel) {
         if (!GC.isSaveAllowed()) {
             JOptionPane.showMessageDialog(this,
                     "Finish or cancel your pending action (attack/build/deconstruct) before saving.",
@@ -108,22 +143,13 @@ public class GameControlPanel extends JPanel {
             return;
         }
 
-        Integer[] slots = {1, 2, 3};
-        Integer slot = (Integer) JOptionPane.showInputDialog(this, "Choose a save slot:",
-                "Save Game", JOptionPane.PLAIN_MESSAGE, null, slots, slots[0]);
-        if (slot == null) return;
-
         boolean success = GC.saveGame(slot);
+        if (success) summaryLabel.setText("Slot " + slot + ": " + GC.peekSaveSummary(slot));
         JOptionPane.showMessageDialog(this, success ? "Game saved to slot " + slot : "Save failed",
                 "Save Game", success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
     }
 
-    private void handleLoadAction() {
-        Integer[] slots = {1, 2, 3};
-        Integer slot = (Integer) JOptionPane.showInputDialog(this, "Choose a save slot to load:",
-                "Load Game", JOptionPane.PLAIN_MESSAGE, null, slots, slots[0]);
-        if (slot == null) return;
-
+    private void handleLoadAction(int slot) {
         boolean success = GC.loadGame(slot);
         JOptionPane.showMessageDialog(this, success ? "Game loaded from slot " + slot : "Load failed (empty or corrupted slot)",
                 "Load Game", success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);

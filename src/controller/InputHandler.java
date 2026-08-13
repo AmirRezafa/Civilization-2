@@ -9,6 +9,7 @@ import model.TechType;
 import model.TerrainType;
 import model.Tile;
 import model.Unit;
+import model.UnitType;
 
 import javax.swing.*;
 import java.awt.event.MouseAdapter;
@@ -74,7 +75,22 @@ public class InputHandler extends MouseAdapter {
         } else if (SwingUtilities.isRightMouseButton(e)) {
             Unit selectedUnit = gc.getSelectedUnit();
             if (selectedUnit != null) {
-                if (HexUtils.isNeighbor(selectedUnit.getCol(), selectedUnit.getRow(), clickedTile.getCol(), clickedTile.getRow())) {
+                boolean isAdjacent = HexUtils.isNeighbor(selectedUnit.getCol(), selectedUnit.getRow(),
+                        clickedTile.getCol(), clickedTile.getRow());
+
+                if (gc.isPendingAttack()) {
+                    boolean isRangedEligible = selectedUnit.getType() == UnitType.ARCHER &&
+                            HexUtils.isDistanceTwo(selectedUnit.getCol(), selectedUnit.getRow(),
+                                    clickedTile.getCol(), clickedTile.getRow(), gc.getTiles());
+                    if (isAdjacent || isRangedEligible) {
+                        if (gc.attackAdjacentStructure(clickedTile.getCol(), clickedTile.getRow())) {
+                            EventBus.publish(new UnitActionsChangedEvent());
+                        }
+                    }
+                    return;
+                }
+
+                if (isAdjacent) {
                     EdgeFeature pending = gc.getPendingEdgeBuild();
                     if (pending != null) {
                         if (gc.buildEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
@@ -87,13 +103,6 @@ public class InputHandler extends MouseAdapter {
                     if (gc.isPendingEdgeDeconstruct()) {
                         if (gc.deconstructEdge(selectedUnit.getCol(), selectedUnit.getRow(),
                                 clickedTile.getCol(), clickedTile.getRow())) {
-                            EventBus.publish(new UnitActionsChangedEvent());
-                        }
-                        return;
-                    }
-
-                    if (gc.isPendingAttack()) {
-                        if (gc.attackAdjacentStructure(clickedTile.getCol(), clickedTile.getRow())) {
                             EventBus.publish(new UnitActionsChangedEvent());
                         }
                         return;

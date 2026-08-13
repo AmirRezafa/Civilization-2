@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class DisasterService {
+public class DisasterService implements java.io.Serializable {
     private static final double DISASTER_CHANCE = 0.05;
     private static final int EARTHQUAKE_RADIUS = 2;
     private static final int EARTHQUAKE_UNIT_DAMAGE = 10;

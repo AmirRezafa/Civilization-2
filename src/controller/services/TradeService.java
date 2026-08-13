@@ -3,7 +3,7 @@ package controller.services;
 import model.GlobalResourceManager;
 import model.ResourceType;
 
-public class TradeService {
+public class TradeService implements java.io.Serializable {
     private boolean bazaarTradeUsedThisTurn = false;
     private boolean tradingPostTradeUsedThisTurn = false;
 

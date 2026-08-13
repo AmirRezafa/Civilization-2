@@ -7,6 +7,7 @@ import controller.events.UnitActionsChangedEvent;
 import controller.services.CombatService;
 import controller.services.DisasterService;
 import controller.services.FogOfWarService;
+import controller.services.PersistedServices;
 import controller.services.SaveLoadService;
 import controller.services.TradeService;
 import controller.services.TribeService;
@@ -29,11 +30,11 @@ public class GameController {
     private Camera camera;
     private FogOfWarService fogOfWarService;
     private TurnProcessor turnProcessor;
-    private final TradeService tradeService = new TradeService();
+    private TradeService tradeService = new TradeService();
     private GlobalHappinessManager happinessManager = new GlobalHappinessManager();
-    private final TribeService tribeService = new TribeService();
+    private TribeService tribeService = new TribeService();
     private List<Tribe> tribes;
-    private final DisasterService disasterService = new DisasterService();
+    private DisasterService disasterService = new DisasterService();
     private final SaveLoadService saveLoadService = new SaveLoadService();
 
     final static int ROWS = 100, COLS = 100;
@@ -54,7 +55,7 @@ public class GameController {
     private EdgeFeature pendingEdgeBuild = null;
     private boolean pendingEdgeDeconstruct = false;
     private boolean pendingAttack = false;
-    private final CombatService combatService = new CombatService();
+    private CombatService combatService = new CombatService();
 
     private int currentTurn = 1;
 
@@ -498,6 +499,23 @@ public class GameController {
         return state;
     }
 
+    public PersistedServices captureServices() {
+        PersistedServices services = new PersistedServices();
+        services.combatService = combatService;
+        services.disasterService = disasterService;
+        services.tradeService = tradeService;
+        services.tribeService = tribeService;
+        return services;
+    }
+
+    public void restoreServices(PersistedServices services) {
+        if (services == null) return;
+        this.combatService = services.combatService;
+        this.disasterService = services.disasterService;
+        this.tradeService = services.tradeService;
+        this.tribeService = services.tribeService;
+    }
+
     public void restoreState(GameState state) {
         this.Tiles = state.tiles;
         this.tileGrid = state.tileGrid;
@@ -540,6 +558,10 @@ public class GameController {
 
     public void autosave() {
         saveLoadService.autosave(this);
+    }
+
+    public String peekSaveSummary(int slot) {
+        return saveLoadService.peekSummary(slot);
     }
 
     public int getCurrentTurn() {
@@ -844,9 +866,21 @@ public class GameController {
             int hpGain = 350 - townHallBuilding.getMaxHP();
             townHallBuilding.setMaxHP(350);
             if (hpGain > 0) townHallBuilding.heal(hpGain);
+            buildWallsAroundTownHall();
         }
 
         EventBus.publish(new HUDChangedEvent());
+    }
+
+    private void buildWallsAroundTownHall() {
+        for (Tile t : Tiles) {
+            if (!HexUtils.isNeighbor(Townhall.getCol(), Townhall.getRow(), t.getCol(), t.getRow())) continue;
+            if (t.getTerrain() == TerrainType.SEA || t.getTerrain() == TerrainType.MOUNTAIN_RANGE) continue;
+
+            HexEdge edge = new HexEdge(Townhall.getCol(), Townhall.getRow(), t.getCol(), t.getRow());
+            edgeFeatures.put(edge, EdgeFeature.WALL);
+            wallHP.put(edge, WALL_MAX_HP);
+        }
     }
 
 

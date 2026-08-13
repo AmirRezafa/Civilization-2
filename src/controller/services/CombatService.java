@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class CombatService {
+public class CombatService implements java.io.Serializable {
     private final Random random = new Random();
 
     private List<Integer> rollDice(List<Unit> units) {
