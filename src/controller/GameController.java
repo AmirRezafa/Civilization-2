@@ -37,7 +37,7 @@ public class GameController {
     private DisasterService disasterService = new DisasterService();
     private final SaveLoadService saveLoadService = new SaveLoadService();
 
-    final static int ROWS = 100, COLS = 100;
+    final static int ROWS = 40, COLS = 40;
 
     private ArrayList<Tile> Tiles;
     private Tile[][] tileGrid;
@@ -61,7 +61,7 @@ public class GameController {
 
     private Tile Townhall;
 
-    private int TownhallX = 10, TownhallY = 10;
+    private int TownhallX = 20, TownhallY = 20;
 
     private int unitCapacity = 9;
     private Map<UnitType, Integer> unitCount = new HashMap<>();
@@ -150,6 +150,14 @@ public class GameController {
 
     public EdgeFeature getEdgeFeature(int col1, int row1, int col2, int row2) {
         return edgeFeatures.getOrDefault(new HexEdge(col1, row1, col2, row2), EdgeFeature.NONE);
+    }
+
+    public Map<HexEdge, EdgeFeature> getEdgeFeatures() {
+        return Collections.unmodifiableMap(edgeFeatures);
+    }
+
+    public Tile getTileAt(int col, int row) {
+        return tileGrid[col][row];
     }
 
     public void startBuildingEdge(EdgeFeature feature) {

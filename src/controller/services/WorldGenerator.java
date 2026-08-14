@@ -41,8 +41,13 @@ public class WorldGenerator {
         TerrainType[] coreTypes = {TerrainType.PLAIN, TerrainType.FOREST, TerrainType.MOUNTAIN, TerrainType.MEADOW};
         TerrainType[] specialTypes = {TerrainType.SEA, TerrainType.MOUNTAIN_RANGE};
 
-        int coreSeedsCount = 120;
-        int specialSeedsCount = 30;
+        // Seed density is tuned relative to the original 100x100 (10,000-tile) map, where
+        // 120 core + 30 special seeds produced reasonably large, contiguous terrain blobs.
+        // Scaling by tile count keeps that same blob size on smaller/larger maps instead of
+        // fragmenting terrain into a checkerboard when the map shrinks.
+        int totalTiles = rows * cols;
+        int coreSeedsCount = Math.max(4, (int) (totalTiles * 0.012));
+        int specialSeedsCount = Math.max(1, (int) (totalTiles * 0.003));
         int seedsCount = coreSeedsCount + specialSeedsCount;
         int[][] seeds = new int[seedsCount + coreTypes.length + 1][2];
         TerrainType[] seedTypes = new TerrainType[seedsCount + coreTypes.length + 1];

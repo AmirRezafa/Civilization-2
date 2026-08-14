@@ -148,8 +148,11 @@ public class UnitActionPanel extends JPanel {
         }
     }
 
-    private void showAttackButton() {
-        JButton attackBtn = new JButton("Attack - then right-click an adjacent structure");
+    private void showAttackButton(UnitType attackerType) {
+        String hint = attackerType == UnitType.ARCHER
+                ? "Attack - then right-click an adjacent or 2-hex-away target"
+                : "Attack - then right-click an adjacent structure";
+        JButton attackBtn = new JButton(hint);
         attackBtn.setFocusable(false);
         attackBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
         attackBtn.setBackground(new Color(192, 57, 43));
@@ -603,7 +606,7 @@ public class UnitActionPanel extends JPanel {
             showExpandBorderHereButton();
             setVisible(true);
         } else if (GC.isMilitaryUnit(selectedUnit.getType())) {
-            showAttackButton();
+            showAttackButton(selectedUnit.getType());
             setVisible(true);
         }
 

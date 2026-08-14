@@ -1,5 +1,7 @@
 package controller.services;
 
+import controller.events.CombatResultEvent;
+import controller.events.EventBus;
 import model.Building;
 import model.Unit;
 import model.UnitType;
@@ -70,6 +72,8 @@ public class CombatService implements java.io.Serializable {
 
         applyHits(defenders, defenderHits);
         applyHits(attackers, attackerHits);
+
+        EventBus.publish(new CombatResultEvent(attackerRolls, defenderRolls, attackerHits, defenderHits, defenderHasWall));
     }
 
     public int calculateStructureDamage(List<Unit> attackers) {

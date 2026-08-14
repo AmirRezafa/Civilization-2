@@ -1,6 +1,8 @@
 package view;
 
 import controller.GameController;
+import model.EdgeFeature;
+import model.HexEdge;
 import model.HexUtils;
 import model.TerrainType;
 import model.Tile;
@@ -9,6 +11,7 @@ import view.components.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Map;
 
 public class Ground extends JPanel{
     private int width, height;
@@ -57,6 +60,19 @@ public class Ground extends JPanel{
             if(tile.getBuilding() != null && tile.isVisible()){
                 BuildingView.show(tile.getBuilding(), x, y, a, g2);
             }
+        }
+
+        for (Map.Entry<HexEdge, EdgeFeature> entry : GC.getEdgeFeatures().entrySet()) {
+            HexEdge edge = entry.getKey();
+            Tile t1 = GC.getTileAt(edge.getCol1(), edge.getRow1());
+            Tile t2 = GC.getTileAt(edge.getCol2(), edge.getRow2());
+            if (!t1.isVisible() || !t2.isVisible()) continue;
+
+            int wallHP = entry.getValue() == EdgeFeature.WALL
+                    ? GC.getWallHP(edge.getCol1(), edge.getRow1(), edge.getCol2(), edge.getRow2())
+                    : 0;
+            EdgeView.show(edge.getCol1(), edge.getRow1(), edge.getCol2(), edge.getRow2(),
+                    entry.getValue(), wallHP, a, g2);
         }
 
         g2.setColor(Color.RED);
