@@ -5,9 +5,9 @@ public enum TechType {
     IRON_MINING("Iron Mining Tech", TownHallLevel.LEVEL_1, true, 0, ResourceType.STONE, 100),
     SETTLEMENT_TECH("Settlement Tech", TownHallLevel.LEVEL_1, true, 0, ResourceType.WOOD, 150),
     PRO_TOOLS("Pro Tools Tech", TownHallLevel.LEVEL_1, true, 0, ResourceType.IRON, 100),
-    SAILING("Sailing", TownHallLevel.LEVEL_2, false, 3, ResourceType.NONE, 0),
-    STEEL_TOOLS("Steel Tools", TownHallLevel.LEVEL_2, false, 3, ResourceType.NONE, 0),
-    DEFENSIVE_ARCHITECTURE("Defensive Architecture", TownHallLevel.LEVEL_3, false, 4, ResourceType.NONE, 0);
+    SAILING("Sailing", TownHallLevel.LEVEL_2, false, 4, ResourceType.WOOD, 80),
+    STEEL_TOOLS("Steel Tools", TownHallLevel.LEVEL_2, false, 3, ResourceType.IRON, 40),
+    DEFENSIVE_ARCHITECTURE("Defensive Architecture", TownHallLevel.LEVEL_3, false, 4, ResourceType.STONE, 100);
 
     private final String displayName;
     private final TownHallLevel requiredLevel;

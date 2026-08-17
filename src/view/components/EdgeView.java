@@ -6,8 +6,9 @@ import model.HexUtils;
 import java.awt.*;
 
 public class EdgeView {
-    public static void show(int col1, int row1, int col2, int row2, EdgeFeature feature, int wallHP, int a, Graphics2D g2) {
-        if (feature == EdgeFeature.NONE) return;
+    public static void show(int col1, int row1, int col2, int row2, EdgeFeature feature, boolean hasRiver,
+                             int wallHP, int a, Graphics2D g2) {
+        if (feature == EdgeFeature.NONE && !hasRiver) return;
 
         double x1 = HexUtils.centerX(col1) * a;
         double y1 = HexUtils.centerY(col1, row1) * a;
@@ -26,6 +27,17 @@ public class EdgeView {
         double py = dx / len;
         double halfSpan = a * 0.42;
 
+        if (hasRiver) {
+            double riverOffset = feature != EdgeFeature.NONE ? a * 0.1 : 0;
+            int rx1 = (int) (midX - px * halfSpan + px * riverOffset);
+            int ry1 = (int) (midY - py * halfSpan + py * riverOffset);
+            int rx2 = (int) (midX + px * halfSpan + px * riverOffset);
+            int ry2 = (int) (midY + py * halfSpan + py * riverOffset);
+            g2.setColor(new Color(50, 120, 220));
+            g2.setStroke(new BasicStroke(Math.max(3f, a * 0.1f)));
+            g2.drawLine(rx1, ry1, rx2, ry2);
+        }
+
         int lx1 = (int) (midX - px * halfSpan);
         int ly1 = (int) (midY - py * halfSpan);
         int lx2 = (int) (midX + px * halfSpan);
@@ -35,11 +47,6 @@ public class EdgeView {
             case ROAD -> {
                 g2.setColor(new Color(160, 120, 70));
                 g2.setStroke(new BasicStroke(Math.max(3f, a * 0.12f)));
-                g2.drawLine(lx1, ly1, lx2, ly2);
-            }
-            case RIVER -> {
-                g2.setColor(new Color(50, 120, 220));
-                g2.setStroke(new BasicStroke(Math.max(4f, a * 0.14f)));
                 g2.drawLine(lx1, ly1, lx2, ly2);
             }
             case WALL -> {

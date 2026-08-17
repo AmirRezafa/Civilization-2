@@ -90,5 +90,23 @@ public class BuildingView {
         int textDescent = fm.getDescent();
 
         g2.drawString(label, cx - (textWidth / 2), cy + (textAscent - textDescent) / 2);
+
+        int maxHP = building.getMaxHP();
+        if (maxHP > 0 && building.getHP() < maxHP) {
+            int barWidth = size;
+            int barHeight = Math.max(3, a / 12);
+            int barX = cx - half;
+            int barY = cy - half - barHeight - 2;
+
+            g2.setColor(new Color(0, 0, 0, 160));
+            g2.fillRect(barX, barY, barWidth, barHeight);
+
+            double ratio = Math.max(0, Math.min(1.0, building.getHP() / (double) maxHP));
+            g2.setColor(ratio > 0.5 ? new Color(46, 204, 113) : ratio > 0.25 ? new Color(241, 196, 15) : new Color(231, 76, 60));
+            g2.fillRect(barX, barY, (int) (barWidth * ratio), barHeight);
+
+            g2.setColor(Color.BLACK);
+            g2.drawRect(barX, barY, barWidth, barHeight);
+        }
     }
 }

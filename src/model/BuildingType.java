@@ -12,12 +12,22 @@ public enum BuildingType {
         public boolean isUnlocked(boolean stoneTech, boolean ironTech, boolean settlementTech) {
             return stoneTech;
         }
+
+        @Override
+        public boolean isBuildableAt(Tile tile, List<Tile> allTiles) {
+            return super.isBuildableAt(tile, allTiles) && tile.hasResource(ResourceType.STONE);
+        }
     },
     IRON_MINE("Iron Mine", TerrainType.MOUNTAIN, ResourceType.IRON,
             25, 0, 0, 3, 2, 0, true, 1) {
         @Override
         public boolean isUnlocked(boolean stoneTech, boolean ironTech, boolean settlementTech) {
             return ironTech;
+        }
+
+        @Override
+        public boolean isBuildableAt(Tile tile, List<Tile> allTiles) {
+            return super.isBuildableAt(tile, allTiles) && tile.hasResource(ResourceType.IRON);
         }
     },
     FARM("Farm", TerrainType.MEADOW, ResourceType.WHEAT,
@@ -27,10 +37,16 @@ public enum BuildingType {
     TOWN_HALL("Town Hall", null, ResourceType.NONE,
             0, 0, 0, 0, 0, 3, false, 1) {
         @Override
-        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
-                                      List<Tile> allTiles) {
-            economy.addResource(ResourceType.WHEAT, 1);
-            economy.addResource(ResourceType.WOOD, 1);
+        public int produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                     List<Tile> allTiles, boolean commit) {
+            if (commit) {
+                economy.addResource(ResourceType.WHEAT, 1);
+                economy.addResource(ResourceType.WOOD, 1);
+            } else {
+                economy.addNetChanges(ResourceType.WHEAT, 1);
+                economy.addNetChanges(ResourceType.WOOD, 1);
+            }
+            return 0;
         }
     },
     SETTLEMENT("Settlement", null, ResourceType.NONE,
@@ -46,9 +62,9 @@ public enum BuildingType {
         }
 
         @Override
-        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
-                                      List<Tile> allTiles) {
-            // Settlements never produce resource output, even when occupied
+        public int produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                     List<Tile> allTiles, boolean commit) {
+            return 0;
         }
     },
     DOCK("Dock", null, ResourceType.FISH,
@@ -67,18 +83,28 @@ public enum BuildingType {
         }
 
         @Override
-        public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
-                                      List<Tile> allTiles) {
-            if (!building.isOccupied()) return;
+        public int produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                     List<Tile> allTiles, boolean commit) {
+            if (!building.isOccupied()) return 0;
 
             for (Tile other : allTiles) {
                 if (other.getTerrain() == TerrainType.SEA && other.hasResource(ResourceType.FISH) &&
                         HexUtils.isNeighbor(tile.getCol(), tile.getRow(), other.getCol(), other.getRow())) {
-                    economy.addResource(ResourceType.FISH,
-                            other.extractResource(ResourceType.FISH, ratePerWorker * building.getStationedWorkers().size()));
-                    return;
+                    int desired = ratePerWorker * building.getStationedWorkers().size();
+                    int available = other.getResources().getOrDefault(ResourceType.FISH, 0);
+                    int amount = Math.min(desired, Math.min(available, roomFor(economy, ResourceType.FISH)));
+                    if (amount <= 0) return 0;
+
+                    if (commit) {
+                        other.extractResource(ResourceType.FISH, amount);
+                        economy.addResource(ResourceType.FISH, amount);
+                    } else {
+                        economy.addNetChanges(ResourceType.FISH, amount);
+                    }
+                    return amount;
                 }
             }
+            return 0;
         }
     },
     BAZAAR("Bazaar", null, ResourceType.NONE,
@@ -181,6 +207,7 @@ public enum BuildingType {
     }
 
     public boolean isBuildableOnTerrain(TerrainType terrain) {
+        if (terrain == TerrainType.SEA || terrain == TerrainType.MOUNTAIN_RANGE) return false;
         return requiredTerrain == null || requiredTerrain == terrain;
     }
 
@@ -196,15 +223,38 @@ public enum BuildingType {
         return 0;
     }
 
-    public void produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
-                                  List<Tile> allTiles) {
-        if (!building.isOccupied()) return;
+    /** How much more of {@code type} the warehouse can still hold - production is clamped to this
+     *  so a full storage doesn't waste resources still sitting in the ground/sea. */
+    int roomFor(GlobalResourceManager economy, ResourceType type) {
+        return Math.max(0, economy.getResourceCapacityAmount(type) - economy.getResourceAmount(type));
+    }
+
+    /**
+     * Produces this building's output for one turn. When {@code commit} is true, this actually
+     * deducts from the tile's resource pool and credits the economy (real turn-end effect).
+     * When false, nothing is mutated except {@link GlobalResourceManager}'s net-change tracker -
+     * this is what powers the HUD's "next turn" preview. Both paths share this single method so
+     * the preview can never drift from what actually happens at turn end.
+     */
+    public int produceResources(Building building, Tile tile, GlobalResourceManager economy, int ratePerWorker,
+                                 List<Tile> allTiles, boolean commit) {
+        if (!building.isOccupied()) return 0;
 
         ResourceType targetResource = getOutputResource();
-        if (targetResource == null || targetResource == ResourceType.NONE) return;
-        if (!tile.hasResource(targetResource)) return;
+        if (targetResource == null || targetResource == ResourceType.NONE) return 0;
+        if (!tile.hasResource(targetResource)) return 0;
 
-        economy.addResource(targetResource,
-                tile.extractResource(targetResource, ratePerWorker * building.getStationedWorkers().size()));
+        int desired = ratePerWorker * building.getStationedWorkers().size();
+        int available = tile.getResources().getOrDefault(targetResource, 0);
+        int amount = Math.min(desired, Math.min(available, roomFor(economy, targetResource)));
+        if (amount <= 0) return 0;
+
+        if (commit) {
+            tile.extractResource(targetResource, amount);
+            economy.addResource(targetResource, amount);
+        } else {
+            economy.addNetChanges(targetResource, amount);
+        }
+        return amount;
     }
 }

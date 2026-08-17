@@ -69,8 +69,19 @@ public class SaveLoadService {
         }
     }
 
-    public void autosave(GameController gc) {
-        save(gc, AUTOSAVE_SLOT);
+    public boolean autosave(GameController gc) {
+        return save(gc, AUTOSAVE_SLOT);
+    }
+
+    public boolean isSlotCorrupted(int slot) {
+        File file = new File(slotFile(slot));
+        if (!file.exists()) return false;
+        return "Corrupted or unreadable".equals(peekSummary(slot));
+    }
+
+    public boolean deleteSlot(int slot) {
+        File file = new File(slotFile(slot));
+        return !file.exists() || file.delete();
     }
 
     public String peekSummary(int slot) {
@@ -88,7 +99,8 @@ public class SaveLoadService {
                     break;
                 }
             }
-            return "Turn " + state.currentTurn + " | Town Hall Lv" + thLevel + " | Saved " + time;
+            String season = model.Season.fromTurn(state.currentTurn).toString();
+            return "Turn " + state.currentTurn + " (" + season + ") | Town Hall Lv" + thLevel + " | Saved " + time;
         } catch (Exception e) {
             return "Corrupted or unreadable";
         }

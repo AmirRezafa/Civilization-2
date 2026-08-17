@@ -4,6 +4,7 @@ public class Quest implements java.io.Serializable {
     private final QuestType type;
     private final int deadlineTurn;
     private boolean completed = false;
+    private boolean readyToDeliver = false;
     private int defeatsRecorded = 0;
 
     public Quest(QuestType type, int issuedTurn) {
@@ -27,12 +28,20 @@ public class Quest implements java.io.Serializable {
         completed = true;
     }
 
+    public boolean isReadyToDeliver() {
+        return readyToDeliver;
+    }
+
+    public void markReadyToDeliver() {
+        readyToDeliver = true;
+    }
+
     public int getDeadlineTurn() {
         return deadlineTurn;
     }
 
     public boolean isExpired(int currentTurn) {
-        return !completed && currentTurn > deadlineTurn;
+        return !completed && !readyToDeliver && currentTurn > deadlineTurn;
     }
 
     public void recordDefeat() {

@@ -23,24 +23,30 @@ public class TradeService implements java.io.Serializable {
     }
 
     public boolean tradeAtBazaar(GlobalResourceManager economy, ResourceType from, ResourceType to, int tierAmount) {
-        if (bazaarTradeUsedThisTurn) return false;
+        if (bazaarTradeUsedThisTurn || from == to) return false;
 
         double rate = bazaarRateForTier(tierAmount);
         if (rate <= 0) return false;
         if (!economy.hasEnough(from, tierAmount)) return false;
 
+        int reward = (int) Math.floor(tierAmount * rate);
+        if (!economy.hasCapacityFor(to, reward)) return false;
+
         economy.spendResource(from, tierAmount);
-        economy.addResource(to, (int) (tierAmount * rate));
+        economy.addResource(to, reward);
         bazaarTradeUsedThisTurn = true;
         return true;
     }
 
     public boolean tradeAtTradingPost(GlobalResourceManager economy, ResourceType from, ResourceType to, int amount) {
-        if (tradingPostTradeUsedThisTurn) return false;
+        if (tradingPostTradeUsedThisTurn || from == to || amount <= 0) return false;
         if (!economy.hasEnough(from, amount)) return false;
 
+        int reward = (int) Math.floor(amount * 0.80);
+        if (!economy.hasCapacityFor(to, reward)) return false;
+
         economy.spendResource(from, amount);
-        economy.addResource(to, (int) (amount * 0.80));
+        economy.addResource(to, reward);
         tradingPostTradeUsedThisTurn = true;
         return true;
     }

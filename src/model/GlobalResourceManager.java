@@ -70,6 +70,11 @@ public class GlobalResourceManager implements java.io.Serializable {
         return (amount <= current);
     }
 
+    public boolean hasCapacityFor(ResourceType type, int amount) {
+        int current = resources.getOrDefault(type, 0);
+        return current + amount <= resourcesCapacity.getOrDefault(type, 0);
+    }
+
     public int getResourceAmount(ResourceType type) {
         return resources.getOrDefault(type, 0);
     }

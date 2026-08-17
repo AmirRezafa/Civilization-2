@@ -5,9 +5,11 @@ import model.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class WorldGenerator {
 
@@ -18,19 +20,21 @@ public class WorldGenerator {
         public final Building townhallBuilding;
         public final List<Unit> initialUnits;
         public final Map<HexEdge, EdgeFeature> edgeFeatures;
+        public final Set<HexEdge> riverEdges;
         public final List<Building> neutralBuildings;
         public final List<Tribe> tribes;
 
         public WorldData(ArrayList<Tile> tiles, Tile[][] tileGrid, Tile townhall,
                           Building townhallBuilding, List<Unit> initialUnits,
-                          Map<HexEdge, EdgeFeature> edgeFeatures, List<Building> neutralBuildings,
-                          List<Tribe> tribes) {
+                          Map<HexEdge, EdgeFeature> edgeFeatures, Set<HexEdge> riverEdges,
+                          List<Building> neutralBuildings, List<Tribe> tribes) {
             this.tiles = tiles;
             this.tileGrid = tileGrid;
             this.townhall = townhall;
             this.townhallBuilding = townhallBuilding;
             this.initialUnits = initialUnits;
             this.edgeFeatures = edgeFeatures;
+            this.riverEdges = riverEdges;
             this.neutralBuildings = neutralBuildings;
             this.tribes = tribes;
         }
@@ -148,7 +152,8 @@ public class WorldGenerator {
         initialUnits.add(new Unit(UnitType.WORKER, townhallX, townhallY - 1));
         initialUnits.add(new Unit(UnitType.EXPLORER, townhallX + 1, townhallY + 1));
 
-        Map<HexEdge, EdgeFeature> edgeFeatures = generateRivers(tempTiles, rows, cols, random);
+        Set<HexEdge> riverEdges = generateRivers(tempTiles, rows, cols, random);
+        Map<HexEdge, EdgeFeature> edgeFeatures = new HashMap<>();
         List<Building> neutralBuildings = placeTradingPosts(tempTiles, townhallX, townhallY, random);
 
         List<Tribe> tribes = placeTribes(tempTiles, townhallX, townhallY, random);
@@ -157,8 +162,18 @@ public class WorldGenerator {
         }
 
         return new WorldData(tempTiles, tileGrid, townhallTile, townhallBuilding, initialUnits, edgeFeatures,
-                neutralBuildings, tribes);
+                riverEdges, neutralBuildings, tribes);
     }
+
+    private boolean isLandHex(Tile tile) {
+        return tile.getTerrain() != TerrainType.SEA && tile.getTerrain() != TerrainType.MOUNTAIN_RANGE
+                && tile.getTerrain().isPassable();
+    }
+
+    private static final String[] TRIBE_NAME_PREFIXES = {
+            "Ashgrove", "Stonemere", "Fallowmere", "Highcairn", "Duskholt",
+            "Brightwater", "Ironmoor", "Willowfen", "Cragmont", "Saltmarsh"
+    };
 
     private List<Tribe> placeTribes(List<Tile> tiles, int townhallX, int townhallY, Random random) {
         List<Tribe> tribes = new ArrayList<>();
@@ -168,17 +183,22 @@ public class WorldGenerator {
         while (placed < 3 && attempts < 200) {
             attempts++;
             Tile candidate = tiles.get(random.nextInt(tiles.size()));
-            if (!candidate.getTerrain().isPassable()) continue;
+            if (!isLandHex(candidate)) continue;
             if (candidate.getBuilding() != null) continue;
 
             double distSq = Math.pow(candidate.getCol() - townhallX, 2) + Math.pow(candidate.getRow() - townhallY, 2);
             if (distSq < 100) continue;
 
             Building camp = new Building(BuildingType.TRIBE_CAMP, candidate.getCol(), candidate.getRow());
-            candidate.setBuilding(camp);
             TribeType[] types = TribeType.values();
             TribeType type = types[random.nextInt(types.length)];
-            tribes.add(new Tribe(candidate.getCol(), candidate.getRow(), type));
+            camp.setMaxHP(type.getCampHP());
+            camp.heal(type.getCampHP());
+            candidate.setBuilding(camp);
+            String name = TRIBE_NAME_PREFIXES[random.nextInt(TRIBE_NAME_PREFIXES.length)] + " " + type.getDisplayName();
+            Tribe tribe = new Tribe(candidate.getCol(), candidate.getRow(), type, name);
+            camp.setOwner(tribe);
+            tribes.add(tribe);
             placed++;
         }
 
@@ -193,7 +213,7 @@ public class WorldGenerator {
         while (placed < 3 && attempts < 200) {
             attempts++;
             Tile candidate = tiles.get(random.nextInt(tiles.size()));
-            if (!candidate.getTerrain().isPassable()) continue;
+            if (!isLandHex(candidate)) continue;
             if (candidate.getBuilding() != null) continue;
 
             double distSq = Math.pow(candidate.getCol() - townhallX, 2) + Math.pow(candidate.getRow() - townhallY, 2);
@@ -208,9 +228,9 @@ public class WorldGenerator {
         return posts;
     }
 
-    private Map<HexEdge, EdgeFeature> generateRivers(List<Tile> tiles, int rows, int cols, Random random) {
+    private Set<HexEdge> generateRivers(List<Tile> tiles, int rows, int cols, Random random) {
         double riverChance = 0.04;
-        Map<HexEdge, EdgeFeature> edgeFeatures = new HashMap<>();
+        Set<HexEdge> riverEdges = new HashSet<>();
 
         for (Tile tile : tiles) {
             int col = tile.getCol();
@@ -226,11 +246,11 @@ public class WorldGenerator {
                 if (nCol < 0 || nCol >= cols || nRow < 0 || nRow >= rows) continue;
 
                 if (random.nextDouble() < riverChance) {
-                    edgeFeatures.put(new HexEdge(col, row, nCol, nRow), EdgeFeature.RIVER);
+                    riverEdges.add(new HexEdge(col, row, nCol, nRow));
                 }
             }
         }
 
-        return edgeFeatures;
+        return riverEdges;
     }
 }

@@ -31,13 +31,15 @@ public class TribeService implements java.io.Serializable {
         return relationship == TribeRelationship.FRIENDLY || relationship == TribeRelationship.ALLIED;
     }
 
-    public boolean tradeWithTribe(Tribe tribe, GlobalResourceManager economy, ResourceType sellResource, int sellAmount) {
+    public boolean tradeWithTribe(Tribe tribe, GlobalResourceManager economy, ResourceType sellResource,
+                                   int sellAmount, ResourceType rewardResource) {
         if (!canTradeWith(tribe)) return false;
+        if (!tribe.getType().getTradeRewardOptions().contains(rewardResource)) return false;
         if (!economy.hasEnough(sellResource, sellAmount)) return false;
 
-        ResourceType rewardResource = tribe.getType().getTradeRewardResource();
         int rewardAmount = (int) Math.floor(sellAmount * tribe.getType().getTradeRate());
         if (rewardAmount <= 0) return false;
+        if (!economy.hasCapacityFor(rewardResource, rewardAmount)) return false;
 
         economy.spendResource(sellResource, sellAmount);
         economy.addResource(rewardResource, rewardAmount);
@@ -49,10 +51,26 @@ public class TribeService implements java.io.Serializable {
         tribesTradedThisTurn.clear();
     }
 
-    public void sendGift(Tribe tribe, ResourceType resource, int resourceAmount) {
-        int perTen = (resource == ResourceType.STONE || resource == ResourceType.IRON) ? 3 : 2;
-        int relationshipBoost = (resourceAmount / 10) * perTen;
+    public boolean canSendGift(Tribe tribe) {
+        return tribe.getRelationship() != TribeRelationship.ENEMY;
+    }
+
+    public boolean sendGift(Tribe tribe, GlobalResourceManager economy, ResourceType resource, int resourceAmount) {
+        if (!canSendGift(tribe)) return false;
+        if (!economy.hasEnough(resource, resourceAmount)) return false;
+
+        economy.spendResource(resource, resourceAmount);
+
+        int relationshipBoost;
+        if (resource == ResourceType.IRON) {
+            relationshipBoost = (resourceAmount / 5) * 3;
+        } else if (resource == ResourceType.STONE) {
+            relationshipBoost = (resourceAmount / 10) * 3;
+        } else {
+            relationshipBoost = (resourceAmount / 10) * 2;
+        }
         tribe.changeRelationship(relationshipBoost);
+        return true;
     }
 
     public void recordWar(Tribe tribe) {
@@ -91,13 +109,40 @@ public class TribeService implements java.io.Serializable {
         return true;
     }
 
-    public boolean canRequestAlliance(Tribe tribe) {
-        return tribe.getRelationshipValue() >= 70;
+    public boolean canRequestAlliance(Tribe tribe, List<Tribe> allTribes, int currentTurn) {
+        if (tribe.getRelationshipValue() < 70) return false;
+        if (tribe.getRelationship() == TribeRelationship.ENEMY) return false;
+        if (currentTurn - tribe.getLastQuestFailedTurn() < 5) return false;
+        return allianceExclusivityReason(tribe, allTribes) == null;
     }
 
-    public boolean requestAlliance(Tribe tribe) {
-        if (!canRequestAlliance(tribe)) return false;
+    public String allianceExclusivityReason(Tribe tribe, List<Tribe> allTribes) {
+        boolean anyOtherAllied = allTribes.stream().anyMatch(t -> t != tribe && t.isAllianceActive());
+
+        if (tribe.getType() == model.TribeType.WARRIOR && anyOtherAllied) {
+            return "Alliance with the Warrior tribe requires no other active alliances.";
+        }
+        boolean anyWarriorAllied = allTribes.stream()
+                .anyMatch(t -> t != tribe && t.getType() == model.TribeType.WARRIOR && t.isAllianceActive());
+        if (anyWarriorAllied) {
+            return "Already allied with the Warrior tribe, which requires exclusivity.";
+        }
+
+        if (tribe.getType() == model.TribeType.FARMER || tribe.getType() == model.TribeType.MOUNTAIN) {
+            model.TribeType opposite = tribe.getType() == model.TribeType.FARMER ? model.TribeType.MOUNTAIN : model.TribeType.FARMER;
+            boolean oppositeAllied = allTribes.stream()
+                    .anyMatch(t -> t.getType() == opposite && t.isAllianceActive());
+            if (oppositeAllied) {
+                return "Cannot be allied with both the Farmer and Mountain tribes at once.";
+            }
+        }
+        return null;
+    }
+
+    public boolean requestAlliance(Tribe tribe, List<Tribe> allTribes, int currentTurn) {
+        if (!canRequestAlliance(tribe, allTribes, currentTurn)) return false;
         tribe.changeRelationship(5);
+        tribe.setAllianceActive(true);
         return true;
     }
 
@@ -122,6 +167,8 @@ public class TribeService implements java.io.Serializable {
     }
 
     public boolean canOfferQuest(Tribe tribe, int currentTurn) {
+        if (tribe.getRelationshipValue() < 20) return false;
+        if (tribe.getRelationship() == TribeRelationship.ENEMY) return false;
         return tribe.getActiveQuest() == null && currentTurn >= tribe.getQuestCooldownUntilTurn();
     }
 
@@ -191,8 +238,15 @@ public class TribeService implements java.io.Serializable {
         };
     }
 
-    public void completeQuest(Tribe tribe, Quest quest, GlobalResourceManager economy) {
-        if (quest == null || quest.isCompleted()) return;
+    public boolean canDeliverQuest(Quest quest, GlobalResourceManager economy) {
+        if (quest == null || quest.isCompleted() || !quest.isReadyToDeliver()) return false;
+        QuestType type = quest.getType();
+        if (type.getRewardResource() == null) return true;
+        return economy.hasCapacityFor(type.getRewardResource(), type.getRewardAmount());
+    }
+
+    public boolean completeQuest(Tribe tribe, Quest quest, GlobalResourceManager economy) {
+        if (!canDeliverQuest(quest, economy)) return false;
 
         QuestType type = quest.getType();
         if (type.getCostResource1() != null) economy.spendResource(type.getCostResource1(), type.getCostAmount1());
@@ -201,11 +255,20 @@ public class TribeService implements java.io.Serializable {
 
         quest.markCompleted();
         tribe.changeRelationship(type.getRewardRelationship());
+        return true;
     }
 
     public void expireQuest(Tribe tribe, int currentTurn) {
         tribe.setActiveQuest(null);
         tribe.changeRelationship(-10);
         tribe.setQuestCooldownUntilTurn(currentTurn + 5);
+        tribe.setLastQuestFailedTurn(currentTurn);
+    }
+
+    public boolean cancelQuest(Tribe tribe) {
+        if (tribe.getActiveQuest() == null) return false;
+        tribe.setActiveQuest(null);
+        tribe.changeRelationship(-5);
+        return true;
     }
 }

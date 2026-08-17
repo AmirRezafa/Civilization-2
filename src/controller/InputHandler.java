@@ -9,7 +9,6 @@ import model.TechType;
 import model.TerrainType;
 import model.Tile;
 import model.Unit;
-import model.UnitType;
 
 import javax.swing.*;
 import java.awt.event.MouseAdapter;
@@ -79,13 +78,43 @@ public class InputHandler extends MouseAdapter {
                         clickedTile.getCol(), clickedTile.getRow());
 
                 if (gc.isPendingAttack()) {
-                    boolean isRangedEligible = selectedUnit.getType() == UnitType.ARCHER &&
+                    boolean isRangedEligible = !isAdjacent && gc.hasArcherAvailable() &&
                             HexUtils.isDistanceTwo(selectedUnit.getCol(), selectedUnit.getRow(),
                                     clickedTile.getCol(), clickedTile.getRow(), gc.getTiles());
                     if (isAdjacent || isRangedEligible) {
-                        if (gc.attackAdjacentStructure(clickedTile.getCol(), clickedTile.getRow())) {
+                        if (isAdjacent && gc.hasWallToward(clickedTile.getCol(), clickedTile.getRow()) &&
+                                gc.hasDefendersAt(clickedTile.getCol(), clickedTile.getRow())) {
+                            Object[] options = {"Attack the wall", "Attack through (defender +2 per die)", "Cancel"};
+                            int choice = JOptionPane.showOptionDialog(null,
+                                    "A wall stands between you and the defenders.",
+                                    "Wall in the way", JOptionPane.YES_NO_CANCEL_OPTION,
+                                    JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+                            if (choice != 0 && choice != 1) return;
+                            if (gc.attackHex(clickedTile.getCol(), clickedTile.getRow(), choice == 0)) {
+                                EventBus.publish(new UnitActionsChangedEvent());
+                            }
+                            return;
+                        }
+                        if (gc.attackHex(clickedTile.getCol(), clickedTile.getRow())) {
                             EventBus.publish(new UnitActionsChangedEvent());
                         }
+                    }
+                    return;
+                }
+
+                if (gc.isPendingBuildingDeconstruct()) {
+                    boolean sameHex = selectedUnit.getCol() == clickedTile.getCol() && selectedUnit.getRow() == clickedTile.getRow();
+                    if ((sameHex || isAdjacent) && gc.canDeconstructBuildingAt(clickedTile.getCol(), clickedTile.getRow())) {
+                        String buildingName = clickedTile.getBuilding().getType().getDisplayName();
+                        int confirm = JOptionPane.showConfirmDialog(null,
+                                "Deconstruct " + buildingName + "? This cannot be undone.",
+                                "Confirm Deconstruction", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                        if (confirm == JOptionPane.YES_OPTION &&
+                                gc.deconstructBuildingAt(clickedTile.getCol(), clickedTile.getRow())) {
+                            EventBus.publish(new UnitActionsChangedEvent());
+                        }
+                    } else {
+                        gc.cancelPendingBuildingDeconstruct();
                     }
                     return;
                 }
@@ -101,9 +130,17 @@ public class InputHandler extends MouseAdapter {
                     }
 
                     if (gc.isPendingEdgeDeconstruct()) {
-                        if (gc.deconstructEdge(selectedUnit.getCol(), selectedUnit.getRow(),
-                                clickedTile.getCol(), clickedTile.getRow())) {
-                            EventBus.publish(new UnitActionsChangedEvent());
+                        EdgeFeature existing = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
+                                clickedTile.getCol(), clickedTile.getRow());
+                        if (existing == EdgeFeature.ROAD || existing == EdgeFeature.WALL) {
+                            int confirm = JOptionPane.showConfirmDialog(null,
+                                    "Destroy this " + existing + "? This cannot be undone.",
+                                    "Confirm Deconstruction", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                            if (confirm == JOptionPane.YES_OPTION &&
+                                    gc.deconstructEdge(selectedUnit.getCol(), selectedUnit.getRow(),
+                                            clickedTile.getCol(), clickedTile.getRow())) {
+                                EventBus.publish(new UnitActionsChangedEvent());
+                            }
                         }
                         return;
                     }
@@ -122,6 +159,8 @@ public class InputHandler extends MouseAdapter {
 
                     EdgeFeature edge = gc.getEdgeFeature(selectedUnit.getCol(), selectedUnit.getRow(),
                             clickedTile.getCol(), clickedTile.getRow());
+                    boolean hasRiver = gc.hasRiverEdge(selectedUnit.getCol(), selectedUnit.getRow(),
+                            clickedTile.getCol(), clickedTile.getRow());
 
                     Season season = gc.getCurrentSeason();
                     int movementCost;
@@ -131,11 +170,14 @@ public class InputHandler extends MouseAdapter {
                         movementCost = 1;
                     } else {
                         movementCost = targetTerrain.getMovementCost();
-                        if (edge == EdgeFeature.RIVER) movementCost += 2;
+                        if (hasRiver) movementCost += 2;
                         movementCost += season.getLandMovementPenalty();
                     }
 
                     if(selectedUnit.move(clickedTile.getCol(), clickedTile.getRow(), movementCost)){
+                        if (targetTerrain == TerrainType.SEA) {
+                            selectedUnit.setCurrentAP(0);
+                        }
                         gc.setTileUnderUnit(clickedTile);
                         gc.updateFog();
                         EventBus.publish(new UnitActionsChangedEvent());

@@ -15,6 +15,8 @@ public class Unit implements java.io.Serializable {
 
     private int hp;
 
+    private Tribe owner;
+
     public Unit(UnitType type, int startCol, int startRow) {
         this.type = type;
         this.col = startCol;
@@ -27,11 +29,19 @@ public class Unit implements java.io.Serializable {
         this.hp = type.getMaxHP();
     }
 
+    public void placeAt(int newCol, int newRow) {
+        this.col = newCol;
+        this.row = newRow;
+        this.isMoving = false;
+        x = HexUtils.centerX(col);
+        y = HexUtils.centerY(col, row);
+        targetX = x;
+        targetY = y;
+    }
+
     public boolean move(int targetCol, int targetRow, int movementCost) {
         if (this.currentAP >= movementCost) {
             this.currentAP -= movementCost;
-            x = HexUtils.centerX(col);
-            y = HexUtils.centerY(col, row);
 
             this.col = targetCol;
             this.row = targetRow;
@@ -133,5 +143,13 @@ public class Unit implements java.io.Serializable {
 
     public boolean isDead() {
         return hp <= 0;
+    }
+
+    public Tribe getOwner() {
+        return owner;
+    }
+
+    public void setOwner(Tribe owner) {
+        this.owner = owner;
     }
 }

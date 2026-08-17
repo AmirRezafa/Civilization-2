@@ -20,6 +20,12 @@ public class MainMenuPanel extends JPanel {
                 MF.showGame();
             }
         },
+        Load("Load Game") {
+            @Override
+            public void clicked() {
+                showLoadDialog();
+            }
+        },
         Setting("Settings") {
             @Override
             public void clicked() {
@@ -79,5 +85,54 @@ public class MainMenuPanel extends JPanel {
             buttonsPanel.add(Box.createVerticalStrut(15));
         }
         add(buttonsPanel);
+    }
+
+    private static void showLoadDialog() {
+        controller.GameController gc = MF.getGameController();
+        JDialog dialog = new JDialog(MF, "Load Game", true);
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        String[] labels = {"Autosave", "Slot 1", "Slot 2", "Slot 3"};
+        for (int slot = 0; slot < labels.length; slot++) {
+            String summary = gc.peekSaveSummary(slot);
+            boolean corrupted = gc.isSaveSlotCorrupted(slot);
+            boolean empty = "Empty".equals(summary);
+
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createEtchedBorder(), BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+            row.add(new JLabel(labels[slot] + ": " + summary), BorderLayout.CENTER);
+
+            JButton loadBtn = new JButton("Load");
+            loadBtn.setFocusable(false);
+            loadBtn.setEnabled(!empty && !corrupted);
+            int finalSlot = slot;
+            loadBtn.addActionListener(e -> {
+                boolean success = MF.loadGameAndShow(finalSlot);
+                if (!success) {
+                    JOptionPane.showMessageDialog(dialog, "Load failed (corrupted slot).",
+                            "Load Game", JOptionPane.ERROR_MESSAGE);
+                }
+                dialog.dispose();
+            });
+            row.add(loadBtn, BorderLayout.EAST);
+
+            content.add(row);
+            content.add(Box.createVerticalStrut(6));
+        }
+
+        JButton cancelBtn = new JButton("Cancel");
+        cancelBtn.setFocusable(false);
+        cancelBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        cancelBtn.addActionListener(e -> dialog.dispose());
+        content.add(cancelBtn);
+
+        dialog.setContentPane(content);
+        dialog.setMinimumSize(new Dimension(360, 260));
+        dialog.pack();
+        dialog.setLocationRelativeTo(MF);
+        dialog.setVisible(true);
     }
 }

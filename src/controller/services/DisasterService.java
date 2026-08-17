@@ -26,6 +26,8 @@ public class DisasterService implements java.io.Serializable {
 
     private final Random random = new Random();
 
+    private int lastCenterCol, lastCenterRow, lastRadius;
+
     public DisasterType rollForDisaster(GameController gc) {
         if (random.nextDouble() >= DISASTER_CHANCE) return null;
 
@@ -41,7 +43,7 @@ public class DisasterService implements java.io.Serializable {
         }
         if (message == null) return null;
 
-        EventBus.publish(new DisasterEvent(type, message));
+        EventBus.publish(new DisasterEvent(type, message, lastCenterCol, lastCenterRow, lastRadius));
         return type;
     }
 
@@ -64,6 +66,9 @@ public class DisasterService implements java.io.Serializable {
                 if (damage > 0) b.takeDamage(damage);
             }
         }
+        lastCenterCol = center.getCol();
+        lastCenterRow = center.getRow();
+        lastRadius = EARTHQUAKE_RADIUS;
         return "An earthquake struck near hex (" + center.getCol() + ", " + center.getRow() + ")!";
     }
 
@@ -104,6 +109,9 @@ public class DisasterService implements java.io.Serializable {
                 if (b.isDestroyed()) gc.removeDestroyedBuilding(b);
             }
         }
+        lastCenterCol = center.getCol();
+        lastCenterRow = center.getRow();
+        lastRadius = 1;
         return "A flood struck near hex (" + center.getCol() + ", " + center.getRow() + ")!";
     }
 

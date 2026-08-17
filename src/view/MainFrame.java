@@ -57,7 +57,6 @@ public class MainFrame extends JFrame {
         this.setLayout(new BorderLayout());
         this.add(mainCardContainer, BorderLayout.CENTER);
 
-
         layeredPane.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
@@ -75,6 +74,19 @@ public class MainFrame extends JFrame {
 
     public void showGame() {
         cardLayout.show(mainCardContainer, "GAME");
+    }
+
+    public GameController getGameController() {
+        return gc;
+    }
+
+    public boolean loadGameAndShow(int slot) {
+        boolean success = gc.loadGame(slot);
+        if (success) {
+            GCP.refreshAfterExternalLoad();
+            showGame();
+        }
+        return success;
     }
 
     public void showMenu() {

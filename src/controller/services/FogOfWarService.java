@@ -46,8 +46,10 @@ public class FogOfWarService {
         for (Tile tile : tiles)
             tile.setVisible(false);
 
-        for (Unit unit : units)
+        for (Unit unit : units) {
+            if (unit.getOwner() != null) continue;
             revealArea(unit.getCol(), unit.getRow(), unit.getType().getVisionRadius());
+        }
 
         for (Building building : buildings)
             revealArea(building.getCol(), building.getRow(), building.getType().getVisionRadius());

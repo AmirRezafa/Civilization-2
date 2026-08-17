@@ -18,6 +18,18 @@ public class UnitActionPanel extends JPanel {
 
     private SubMenu currentSubMenu = SubMenu.MAIN;
 
+    private static final ResourceType[] TRADABLE_RESOURCES = {
+            ResourceType.WOOD, ResourceType.STONE, ResourceType.IRON, ResourceType.WHEAT
+    };
+
+    private ResourceType bazaarSellResource = ResourceType.WOOD;
+    private ResourceType bazaarRewardResource = ResourceType.STONE;
+    private ResourceType tradingPostSellResource = ResourceType.WOOD;
+    private ResourceType tradingPostRewardResource = ResourceType.STONE;
+    private int tradingPostAmount = 50;
+    private ResourceType tribeSellResource = ResourceType.WOOD;
+    private ResourceType tribeRewardResource = null;
+
     private int a;
 
     public UnitActionPanel(GameController gc) {
@@ -82,19 +94,35 @@ public class UnitActionPanel extends JPanel {
 
     public void showProduceButtons(){
         for (UnitType uType : UnitType.values()) {
+            int woodCost = uType == UnitType.SWORDSMAN ? 10 : 0;
+            String costText = uType.getFoodCost() + " Food" + (woodCost > 0 ? ", " + woodCost + " Wood" : "");
             String btnText = "Train " + uType.getDisplayName() +
-                    " (" + uType.getFoodCost() + " Food, " + uType.getBuildTurns() + " Turns)";
+                    " (" + costText + ", " + uType.getBuildTurns() + " Turns)";
 
             JButton trainBtn = new JButton(btnText);
             trainBtn.setFocusable(false);
             trainBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
 
-            boolean canAfford = GC.hasEnoughFood(uType.getFoodCost()) &&
-                    GC.checkUnitCap();
+            boolean hasFood = GC.hasEnoughFood(uType.getFoodCost());
+            boolean hasWood = woodCost <= 0 || GC.hasEnoughWood(woodCost);
+            boolean unitCapOk = GC.checkUnitCap();
             boolean militaryCapOk = !GC.isMilitaryUnit(uType) || GC.checkMilitaryUnitCap();
             boolean stableOk = uType != UnitType.CAVALRY || GC.hasStable();
             boolean archerLevelOk = uType != UnitType.ARCHER || GC.getTownHallLevel().getLevelNumber() >= 2;
-            trainBtn.setEnabled(canAfford && militaryCapOk && stableOk && archerLevelOk);
+            boolean cavalryLevelOk = uType != UnitType.CAVALRY || GC.getTownHallLevel().getLevelNumber() >= 2;
+            boolean enabled = hasFood && hasWood && unitCapOk && militaryCapOk && stableOk && archerLevelOk && cavalryLevelOk;
+            trainBtn.setEnabled(enabled);
+
+            if (!enabled) {
+                String reason;
+                if (!hasFood) reason = "Not enough food.";
+                else if (!hasWood) reason = "Not enough wood.";
+                else if (!unitCapOk) reason = "Total unit cap reached.";
+                else if (!militaryCapOk) reason = "Military unit cap reached for this Town Hall level.";
+                else if (!archerLevelOk || !cavalryLevelOk) reason = "Requires Town Hall level 2 (Settlement).";
+                else reason = "Requires an active Stable on the map.";
+                trainBtn.setToolTipText(reason);
+            }
 
             trainBtn.addActionListener(e -> {
                 GC.startProducingUnitInTownHall(uType);
@@ -136,8 +164,13 @@ public class UnitActionPanel extends JPanel {
             boolean isTileEmpty = (currentTile.getBuilding() == null);
             boolean inTerritory = currentTile.isOwned();
             boolean levelMet = GC.getTownHallLevel().getLevelNumber() >= bType.getRequiredTownHallLevel();
+            boolean notInTribeZone = !GC.isInTribeForbiddenZone(currentTile.getCol(), currentTile.getRow());
 
-            buildBtn.setEnabled(isValidTerrain && isTileEmpty && inTerritory && levelMet);
+            boolean enabled = isValidTerrain && isTileEmpty && inTerritory && levelMet && notInTribeZone;
+            buildBtn.setEnabled(enabled);
+            if (!enabled && !notInTribeZone) {
+                buildBtn.setToolTipText("Too close to an unfriendly tribe's camp.");
+            }
 
             buildBtn.addActionListener(e -> {
                 GC.constructBuilding(bType);
@@ -148,10 +181,10 @@ public class UnitActionPanel extends JPanel {
         }
     }
 
-    private void showAttackButton(UnitType attackerType) {
-        String hint = attackerType == UnitType.ARCHER
-                ? "Attack - then right-click an adjacent or 2-hex-away target"
-                : "Attack - then right-click an adjacent structure";
+    private void showAttackButton() {
+        String hint = GC.hasArcherAvailable()
+                ? "Attack (whole stack) - then right-click an adjacent or 2-hex-away target"
+                : "Attack (whole stack) - then right-click an adjacent target";
         JButton attackBtn = new JButton(hint);
         attackBtn.setFocusable(false);
         attackBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
@@ -186,16 +219,39 @@ public class UnitActionPanel extends JPanel {
         buttonContainer.add(wallBtn);
     }
 
+    private JComboBox<ResourceType> makeResourceCombo(ResourceType selected, java.util.function.Consumer<ResourceType> onChange) {
+        JComboBox<ResourceType> combo = new JComboBox<>(TRADABLE_RESOURCES);
+        combo.setSelectedItem(selected);
+        combo.setFocusable(false);
+        combo.addActionListener(e -> {
+            onChange.accept((ResourceType) combo.getSelectedItem());
+            updateActions();
+        });
+        return combo;
+    }
+
     private void showBazaarButtons() {
+        buttonContainer.add(new JLabel("Sell:"));
+        buttonContainer.add(makeResourceCombo(bazaarSellResource, r -> bazaarSellResource = r));
+        buttonContainer.add(new JLabel("For:"));
+        buttonContainer.add(makeResourceCombo(bazaarRewardResource, r -> bazaarRewardResource = r));
+
         int[] tiers = {10, 100, 500};
         for (int tier : tiers) {
             double rate = GC.bazaarRateForTier(tier);
-            JButton tradeBtn = new JButton("Trade " + tier + " Wood -> Stone (" + (int) (rate * 100) + "%)");
+            JButton tradeBtn = new JButton("Trade " + tier + " " + bazaarSellResource.name() +
+                    " -> " + (int) (tier * rate) + " " + bazaarRewardResource.name() + " (" + (int) (rate * 100) + "%)");
             tradeBtn.setFocusable(false);
             tradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-            tradeBtn.setEnabled(GC.canUseBazaar() && GC.hasEnoughWood(tier));
+            boolean sameResource = bazaarSellResource == bazaarRewardResource;
+            boolean enabled = !sameResource && GC.canUseBazaar() && GC.hasEnoughResource(bazaarSellResource, tier);
+            tradeBtn.setEnabled(enabled);
+            if (!enabled) {
+                tradeBtn.setToolTipText(sameResource ? "Pick two different resources." :
+                        !GC.canUseBazaar() ? "Only one Bazaar trade per turn." : "Not enough " + bazaarSellResource.name() + ".");
+            }
             tradeBtn.addActionListener(e -> {
-                GC.tradeAtBazaar(ResourceType.WOOD, ResourceType.STONE, tier);
+                GC.tradeAtBazaar(bazaarSellResource, bazaarRewardResource, tier);
                 updateActions();
             });
             buttonContainer.add(tradeBtn);
@@ -211,13 +267,33 @@ public class UnitActionPanel extends JPanel {
             return;
         }
 
-        int amount = 50;
-        JButton tradeBtn = new JButton("Trade " + amount + " Wood -> Stone (80%)");
+        buttonContainer.add(new JLabel("Sell:"));
+        buttonContainer.add(makeResourceCombo(tradingPostSellResource, r -> tradingPostSellResource = r));
+        buttonContainer.add(new JLabel("For:"));
+        buttonContainer.add(makeResourceCombo(tradingPostRewardResource, r -> tradingPostRewardResource = r));
+
+        JTextField amountField = new JTextField(String.valueOf(tradingPostAmount), 4);
+        amountField.addActionListener(e -> {
+            try {
+                tradingPostAmount = Math.max(1, Integer.parseInt(amountField.getText().trim()));
+            } catch (NumberFormatException ignored) { /* keep previous amount */ }
+            updateActions();
+        });
+        buttonContainer.add(amountField);
+
+        JButton tradeBtn = new JButton("Trade " + tradingPostAmount + " " + tradingPostSellResource.name() +
+                " -> " + (int) (tradingPostAmount * 0.80) + " " + tradingPostRewardResource.name() + " (80%)");
         tradeBtn.setFocusable(false);
         tradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-        tradeBtn.setEnabled(GC.canUseTradingPost() && GC.hasEnoughWood(amount));
+        boolean sameResource = tradingPostSellResource == tradingPostRewardResource;
+        boolean enabled = !sameResource && GC.canUseTradingPost() && GC.hasEnoughResource(tradingPostSellResource, tradingPostAmount);
+        tradeBtn.setEnabled(enabled);
+        if (!enabled) {
+            tradeBtn.setToolTipText(sameResource ? "Pick two different resources." :
+                    !GC.canUseTradingPost() ? "Only one Trading Post trade per turn." : "Not enough " + tradingPostSellResource.name() + ".");
+        }
         tradeBtn.addActionListener(e -> {
-            GC.tradeAtTradingPost(ResourceType.WOOD, ResourceType.STONE, amount);
+            GC.tradeAtTradingPost(tradingPostSellResource, tradingPostRewardResource, tradingPostAmount);
             updateActions();
         });
         buttonContainer.add(tradeBtn);
@@ -233,10 +309,12 @@ public class UnitActionPanel extends JPanel {
         }
         if (tribe == null) return;
 
-        JLabel infoLabel = new JLabel("Type: " + tribe.getType().getDisplayName() +
+        JLabel infoLabel = new JLabel(tribe.getName() + " (" + tribe.getType().getDisplayName() +
+                ") | Camp: [" + tribe.getCol() + ", " + tribe.getRow() + "]" +
                 " | Relationship: " + tribe.getRelationship() +
                 " (" + tribe.getRelationshipValue() + ") | Camp HP: " + currentTile.getBuilding().getHP() +
-                " | Guards: " + tribe.getGuardUnitCount());
+                "/" + currentTile.getBuilding().getMaxHP() +
+                " | Guards: " + GC.countGuardUnits(tribe));
         infoLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
         infoLabel.setForeground(Color.WHITE);
         buttonContainer.add(infoLabel);
@@ -258,18 +336,40 @@ public class UnitActionPanel extends JPanel {
         }
 
         if (tribe.getType().canTrade()) {
+            java.util.List<ResourceType> rewardOptions = tribe.getType().getTradeRewardOptions();
+            if (tribeRewardResource == null || !rewardOptions.contains(tribeRewardResource)) {
+                tribeRewardResource = rewardOptions.get(0);
+            }
+
             int sellAmount = 20;
             boolean canTrade = GC.canTradeWithTribe(tribe);
-            JButton tradeBtn = new JButton("Trade " + sellAmount + " Wood -> " +
-                    (int) (sellAmount * tribe.getType().getTradeRate()) + " " +
-                    tribe.getType().getTradeRewardResource().name());
+
+            buttonContainer.add(new JLabel("Sell:"));
+            buttonContainer.add(makeResourceCombo(tribeSellResource, r -> tribeSellResource = r));
+            if (rewardOptions.size() > 1) {
+                buttonContainer.add(new JLabel("For:"));
+                JComboBox<ResourceType> rewardCombo = new JComboBox<>(rewardOptions.toArray(new ResourceType[0]));
+                rewardCombo.setSelectedItem(tribeRewardResource);
+                rewardCombo.setFocusable(false);
+                rewardCombo.addActionListener(e -> {
+                    tribeRewardResource = (ResourceType) rewardCombo.getSelectedItem();
+                    updateActions();
+                });
+                buttonContainer.add(rewardCombo);
+            }
+
+            JButton tradeBtn = new JButton("Trade " + sellAmount + " " + tribeSellResource.name() + " -> " +
+                    (int) (sellAmount * tribe.getType().getTradeRate()) + " " + tribeRewardResource.name());
             tradeBtn.setFocusable(false);
             tradeBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-            tradeBtn.setEnabled(canTrade && GC.hasEnoughWood(sellAmount));
-            tradeBtn.setToolTipText(canTrade ? null :
-                    "Requires Friendly/Allied relationship (>= 20) and one trade per turn");
+            boolean sameResource = tribeSellResource == tribeRewardResource;
+            boolean enabled = canTrade && !sameResource && GC.hasEnoughResource(tribeSellResource, sellAmount);
+            tradeBtn.setEnabled(enabled);
+            tradeBtn.setToolTipText(!canTrade ? "Requires Friendly/Allied relationship (>= 20) and one trade per turn" :
+                    sameResource ? "Pick two different resources." :
+                    !enabled ? "Not enough " + tribeSellResource.name() + "." : null);
             tradeBtn.addActionListener(e -> {
-                GC.tradeWithTribe(finalTribe, ResourceType.WOOD, sellAmount);
+                GC.tradeWithTribe(finalTribe, tribeSellResource, sellAmount, tribeRewardResource);
                 updateActions();
             });
             buttonContainer.add(tradeBtn);
@@ -286,30 +386,66 @@ public class UnitActionPanel extends JPanel {
             questBtn.setFocusable(false);
             questBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
             questBtn.setEnabled(canOffer);
-            questBtn.setToolTipText(canOffer ? null : "This tribe needs more time before offering a new quest");
+            questBtn.setToolTipText(canOffer ? null :
+                    "Requires relationship >= 20, not at war, and this tribe's quest cooldown to have passed");
             questBtn.addActionListener(e -> {
                 GC.issueQuestToTribe(finalTribe);
                 updateActions();
             });
             buttonContainer.add(questBtn);
         } else {
-            JLabel questLabel = new JLabel("Quest: " + tribe.getActiveQuest().getDescription() +
-                    " | Deadline: Turn " + tribe.getActiveQuest().getDeadlineTurn() +
-                    (tribe.getActiveQuest().isCompleted() ? " (Completed)" : " (In Progress)"));
+            Quest quest = tribe.getActiveQuest();
+            String status = quest.isCompleted() ? "Completed" : quest.isReadyToDeliver() ? "Ready to deliver" : "In Progress";
+            JLabel questLabel = new JLabel("Quest: " + quest.getDescription() +
+                    " | Deadline: Turn " + quest.getDeadlineTurn() + " | " + status);
             questLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
             questLabel.setForeground(Color.WHITE);
             buttonContainer.add(questLabel);
+
+            if (!quest.isCompleted()) {
+                boolean canDeliver = GC.canDeliverQuest(finalTribe);
+                JButton deliverBtn = new JButton("Deliver Quest");
+                deliverBtn.setFocusable(false);
+                deliverBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+                deliverBtn.setEnabled(canDeliver);
+                deliverBtn.setToolTipText(canDeliver ? null :
+                        !quest.isReadyToDeliver() ? "Quest condition not met yet." : "Not enough storage room for the reward.");
+                deliverBtn.addActionListener(e -> {
+                    GC.deliverQuest(finalTribe);
+                    updateActions();
+                });
+                buttonContainer.add(deliverBtn);
+
+                JButton cancelQuestBtn = new JButton("Cancel Quest (-5 relationship)");
+                cancelQuestBtn.setFocusable(false);
+                cancelQuestBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+                cancelQuestBtn.addActionListener(e -> {
+                    GC.cancelTribeQuest(finalTribe);
+                    updateActions();
+                });
+                buttonContainer.add(cancelQuestBtn);
+            }
         }
 
         JButton rewardsBtn = new JButton("View Tribe Rewards");
         rewardsBtn.setFocusable(false);
         rewardsBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
         rewardsBtn.addActionListener(e -> {
-            String info = finalTribe.getType().canTrade()
-                    ? "Trade rate: " + (int) (finalTribe.getType().getTradeRate() * 100) + "% into " +
-                    finalTribe.getType().getTradeRewardResource().name()
-                    : "This tribe type does not offer trade.";
-            JOptionPane.showMessageDialog(this, info, "Tribe Rewards", JOptionPane.INFORMATION_MESSAGE);
+            StringBuilder info = new StringBuilder();
+            if (finalTribe.getType().canTrade()) {
+                info.append("Trade rate: ").append((int) (finalTribe.getType().getTradeRate() * 100))
+                        .append("% into ");
+                java.util.List<ResourceType> options = finalTribe.getType().getTradeRewardOptions();
+                for (int i = 0; i < options.size(); i++) {
+                    info.append(options.get(i).name());
+                    if (i < options.size() - 1) info.append(" / ");
+                }
+                info.append(".\n");
+            } else {
+                info.append("This tribe type does not offer trade.\n");
+            }
+            info.append("Allied bonus: ").append(GC.describeAllianceBonus(finalTribe.getType()));
+            JOptionPane.showMessageDialog(this, info.toString(), "Tribe Rewards", JOptionPane.INFORMATION_MESSAGE);
         });
         buttonContainer.add(rewardsBtn);
 
@@ -320,6 +456,8 @@ public class UnitActionPanel extends JPanel {
         declareWarBtn.setBackground(new Color(192, 57, 43));
         declareWarBtn.setForeground(Color.WHITE);
         declareWarBtn.setEnabled(canDeclareWar);
+        declareWarBtn.setToolTipText(canDeclareWar ? "Friendly costs -5 happiness, Allied costs -15 happiness." :
+                "Already at war with this tribe.");
         declareWarBtn.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(this,
                     "Declaring war cannot be undone and will drop relationship to -100. Continue?",
@@ -343,24 +481,44 @@ public class UnitActionPanel extends JPanel {
         });
         buttonContainer.add(peaceBtn);
 
-        boolean canAlliance = GC.canRequestAllianceWithTribe(tribe);
-        JButton allianceBtn = new JButton("Request Alliance");
-        allianceBtn.setFocusable(false);
-        allianceBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-        allianceBtn.setEnabled(canAlliance);
-        allianceBtn.setToolTipText(canAlliance ? null : "Relationship must be at least 70");
-        allianceBtn.addActionListener(e -> {
-            GC.requestAllianceWithTribe(finalTribe);
-            updateActions();
-        });
-        buttonContainer.add(allianceBtn);
+        if (tribe.isAllianceActive()) {
+            JLabel allianceLabel = new JLabel("Alliance Active: " + GC.describeAllianceBonus(tribe.getType()));
+            allianceLabel.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            allianceLabel.setForeground(new Color(46, 204, 113));
+            buttonContainer.add(allianceLabel);
+        } else {
+            boolean canAlliance = GC.canRequestAllianceWithTribe(tribe);
+            JButton allianceBtn = new JButton("Request Alliance");
+            allianceBtn.setFocusable(false);
+            allianceBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+            allianceBtn.setEnabled(canAlliance);
+            if (!canAlliance) {
+                String exclusivityReason = GC.allianceExclusivityReason(tribe);
+                allianceBtn.setToolTipText(exclusivityReason != null ? exclusivityReason :
+                        "Requires relationship >= 70, no active war, and no failed quest from this tribe in the last 5 turns.");
+            }
+            allianceBtn.addActionListener(e -> {
+                GC.requestAllianceWithTribe(finalTribe);
+                updateActions();
+            });
+            buttonContainer.add(allianceBtn);
+        }
     }
 
     private void addGiftButton(Tribe tribe, ResourceType resource, int amount) {
         JButton giftBtn = new JButton("Send Gift (" + amount + " " + resource.name() + ")");
         giftBtn.setFocusable(false);
         giftBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
-        giftBtn.setEnabled(GC.hasEnoughResource(resource, amount));
+
+        boolean canSend = GC.canSendGiftToTribe(tribe);
+        boolean canAfford = GC.hasEnoughResource(resource, amount);
+        giftBtn.setEnabled(canSend && canAfford);
+        if (!canSend) {
+            giftBtn.setToolTipText("An enemy tribe won't accept gifts.");
+        } else if (!canAfford) {
+            giftBtn.setToolTipText("Not enough " + resource.name() + ".");
+        }
+
         giftBtn.addActionListener(e -> {
             GC.sendGiftToTribe(tribe, resource, amount);
             updateActions();
@@ -368,8 +526,11 @@ public class UnitActionPanel extends JPanel {
         buttonContainer.add(giftBtn);
     }
 
+    private static final java.util.Set<BuildingType> NON_DEMOLISHABLE_TYPES = java.util.Set.of(
+            BuildingType.TOWN_HALL, BuildingType.TRIBE_CAMP, BuildingType.TRADING_POST);
+
     private void showDeconstructButtons(Tile currentTile) {
-        if (currentTile.getBuilding() != null && currentTile.getBuilding().getType() != BuildingType.TOWN_HALL) {
+        if (currentTile.getBuilding() != null && !NON_DEMOLISHABLE_TYPES.contains(currentTile.getBuilding().getType())) {
             JButton deconstructBtn = new JButton("Deconstruct " + currentTile.getBuilding().getType().getDisplayName() + " (1 AP)");
             deconstructBtn.setFocusable(false);
             deconstructBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
@@ -394,6 +555,15 @@ public class UnitActionPanel extends JPanel {
             updateActions();
         });
         buttonContainer.add(deconstructEdgeBtn);
+
+        JButton deconstructNeighborBtn = new JButton("Deconstruct Building on Neighbor Hex (1 AP) - then right-click it");
+        deconstructNeighborBtn.setFocusable(false);
+        deconstructNeighborBtn.setFont(new Font("SansSerif", Font.BOLD, (int) (a * 0.4)));
+        deconstructNeighborBtn.addActionListener(e -> {
+            GC.startDeconstructingBuilding();
+            updateActions();
+        });
+        buttonContainer.add(deconstructNeighborBtn);
     }
 
     private void showWorkHereButton(){
@@ -470,6 +640,11 @@ public class UnitActionPanel extends JPanel {
                 boolean levelMet = GC.getTownHallLevel().getLevelNumber() >= tech.getRequiredLevel().getLevelNumber();
                 boolean canAfford = GC.hasEnoughResource(tech.getCostResource(), tech.getCostAmount());
                 techBtn.setEnabled(levelMet && canAfford);
+                if (!levelMet) {
+                    techBtn.setToolTipText("Requires Town Hall level " + tech.getRequiredLevel().getLevelNumber() + ".");
+                } else if (!canAfford) {
+                    techBtn.setToolTipText("Not enough " + tech.getCostResource() + ".");
+                }
 
                 techBtn.addActionListener(e -> {
                     GC.researchTech(tech);
@@ -606,7 +781,7 @@ public class UnitActionPanel extends JPanel {
             showExpandBorderHereButton();
             setVisible(true);
         } else if (GC.isMilitaryUnit(selectedUnit.getType())) {
-            showAttackButton(selectedUnit.getType());
+            showAttackButton();
             setVisible(true);
         }
 

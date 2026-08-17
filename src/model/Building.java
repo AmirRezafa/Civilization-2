@@ -20,6 +20,7 @@ public class Building implements java.io.Serializable {
     private int hp;
     private int maxHP;
     private int disabledUntilTurn = 0;
+    private Tribe owner;
 
 
     public Building(BuildingType type, int col, int row) {
@@ -170,5 +171,13 @@ public class Building implements java.io.Serializable {
 
     public void setDisabledUntilTurn(int turn) {
         this.disabledUntilTurn = turn;
+    }
+
+    public Tribe getOwner() {
+        return owner;
+    }
+
+    public void setOwner(Tribe owner) {
+        this.owner = owner;
     }
 }
